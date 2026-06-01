@@ -1,0 +1,533 @@
+[
+  {
+    "name": "Google Analytics",
+    "patterns": [
+      "google-analytics.com/collect",
+      "google-analytics.com/g/collect",
+      "analytics.google.com/g/collect",
+      "ssl.google-analytics.com",
+      "google-analytics.com/j/collect",
+      "google-analytics.com/r/collect"
+    ]
+  },
+  {
+    "name": "Google Tag Manager",
+    "patterns": [
+      "googletagmanager.com/gtm.js",
+      "googletagmanager.com/gtag/js",
+      "googletagmanager.com/a",
+      "tagmanager.google.com"
+    ]
+  },
+  {
+    "name": "Google Ads / DoubleClick",
+    "patterns": [
+      "doubleclick.net",
+      "googleadservices.com/pagead",
+      "googlesyndication.com",
+      "adservice.google.com",
+      "ad.doubleclick.net",
+      "cm.g.doubleclick.net"
+    ]
+  },
+  {
+    "name": "Facebook/Meta Pixel",
+    "patterns": [
+      "connect.facebook.net/en_US/fbevents.js",
+      "connect.facebook.net/signals",
+      "facebook.com/tr",
+      "connect.facebook.net/en_US/all.js"
+    ]
+  },
+  {
+    "name": "TikTok Pixel",
+    "patterns": [
+      "analytics.tiktok.com",
+      "business-api.tiktok.com",
+      "analytics.byteoversea.com"
+    ]
+  },
+  {
+    "name": "Snapchat Pixel",
+    "patterns": [
+      "sc-static.net/scevent.min.js",
+      "tr.snapchat.com"
+    ]
+  },
+  {
+    "name": "Twitter/X Pixel",
+    "patterns": [
+      "static.ads-twitter.com",
+      "analytics.twitter.com",
+      "t.co/i/adsct",
+      "ads-twitter.com"
+    ]
+  },
+  {
+    "name": "LinkedIn Insight",
+    "patterns": [
+      "snap.licdn.com/li.lms-analytics",
+      "platform.linkedin.com/in.js",
+      "px.ads.linkedin.com"
+    ]
+  },
+  {
+    "name": "Pinterest Tag",
+    "patterns": [
+      "ct.pinterest.com",
+      "assets.pinterest.com/js/pinit.js",
+      "log.pinterest.com"
+    ]
+  },
+  {
+    "name": "Hotjar",
+    "patterns": [
+      "static.hotjar.com",
+      "script.hotjar.com",
+      "vars.hotjar.com",
+      "insights.hotjar.com",
+      "vc.hotjar.io"
+    ]
+  },
+  {
+    "name": "Microsoft Clarity",
+    "patterns": [
+      "clarity.ms",
+      "c.clarity.ms",
+      "www.clarity.ms/tag"
+    ]
+  },
+  {
+    "name": "Microsoft UET / Bing Ads",
+    "patterns": [
+      "bat.bing.com",
+      "bat.r.msn.com",
+      "udc.msn.com"
+    ]
+  },
+  {
+    "name": "Amplitude",
+    "patterns": [
+      "api.amplitude.com",
+      "api2.amplitude.com",
+      "analytics.amplitude.com"
+    ]
+  },
+  {
+    "name": "Mixpanel",
+    "patterns": [
+      "api.mixpanel.com",
+      "decide.mixpanel.com",
+      "cdn.mxpnl.com"
+    ]
+  },
+  {
+    "name": "Segment",
+    "patterns": [
+      "api.segment.io",
+      "cdn.segment.com",
+      "cdn.segment.io",
+      "evs.segment.com"
+    ]
+  },
+  {
+    "name": "HubSpot",
+    "patterns": [
+      "js.hs-scripts.com",
+      "js.hs-analytics.net",
+      "track.hubspot.com",
+      "js.hubspot.com",
+      "forms.hsforms.com",
+      "hubspot.com/useremail"
+    ]
+  },
+  {
+    "name": "Intercom",
+    "patterns": [
+      "js.intercomcdn.com",
+      "api-iam.intercom.io",
+      "widget.intercom.io"
+    ]
+  },
+  {
+    "name": "Drift",
+    "patterns": [
+      "js.driftt.com",
+      "event.drift.com"
+    ]
+  },
+  {
+    "name": "Yandex Metrica",
+    "patterns": [
+      "mc.yandex.ru",
+      "mc.webvisor.org",
+      "mc.yandex.com"
+    ]
+  },
+  {
+    "name": "Heap Analytics",
+    "patterns": [
+      "cdn.heapanalytics.com",
+      "heapanalytics.com"
+    ]
+  },
+  {
+    "name": "FullStory",
+    "patterns": [
+      "fullstory.com/s/fs.js",
+      "rs.fullstory.com",
+      "edge.fullstory.com"
+    ]
+  },
+  {
+    "name": "LogRocket",
+    "patterns": [
+      "cdn.logrocket.io",
+      "r.lr-ingest.com",
+      "r.lr-ingest.io"
+    ]
+  },
+  {
+    "name": "Mouseflow",
+    "patterns": [
+      "cdn.mouseflow.com",
+      "app.mouseflow.com/api"
+    ]
+  },
+  {
+    "name": "Crazy Egg",
+    "patterns": [
+      "script.crazyegg.com",
+      "ct.pinterest.com"
+    ]
+  },
+  {
+    "name": "Lucky Orange",
+    "patterns": [
+      "d.luckyorange.com",
+      "cs.luckyorange.com"
+    ]
+  },
+  {
+    "name": "Optimizely",
+    "patterns": [
+      "cdn.optimizely.com",
+      "logx.optimizely.com",
+      "api.optimizely.com"
+    ]
+  },
+  {
+    "name": "VWO (Visual Website Optimizer)",
+    "patterns": [
+      "dev.visualwebsiteoptimizer.com",
+      "vis.pub/vwo",
+      "dacdn.visual-website-optimizer.com"
+    ]
+  },
+  {
+    "name": "AB Tasty",
+    "patterns": [
+      "cdn.abtasty.com",
+      "data.abtasty.com"
+    ]
+  },
+  {
+    "name": "Salesforce Marketing Cloud",
+    "patterns": [
+      "mc.exacttarget.com",
+      "tracking.exacttarget.com",
+      "salesforce-communities.com"
+    ]
+  },
+  {
+    "name": "Adobe Analytics",
+    "patterns": [
+      "omtrdc.net",
+      "2o7.net",
+      "demdex.net",
+      "adobedc.net",
+      "sc.omtrdc.net"
+    ]
+  },
+  {
+    "name": "Adobe Audience Manager",
+    "patterns": [
+      "dpm.demdex.net",
+      "adobedc.net/id"
+    ]
+  },
+  {
+    "name": "Criteo",
+    "patterns": [
+      "static.criteo.net",
+      "dis.criteo.com",
+      "sslwidget.criteo.com",
+      "bidder.criteo.com"
+    ]
+  },
+  {
+    "name": "Outbrain",
+    "patterns": [
+      "amplify.outbrain.com",
+      "log.outbrain.com",
+      "widgets.outbrain.com"
+    ]
+  },
+  {
+    "name": "Taboola",
+    "patterns": [
+      "cdn.taboola.com",
+      "trc.taboola.com",
+      "nr-data.taboola.com"
+    ]
+  },
+  {
+    "name": "AppNexus / Xandr",
+    "patterns": [
+      "ib.adnxs.com",
+      "secure.adnxs.com",
+      "acdn.adnxs.com"
+    ]
+  },
+  {
+    "name": "MediaMath",
+    "patterns": [
+      "pixel.mathtag.com",
+      "sync.mathtag.com"
+    ]
+  },
+  {
+    "name": "The Trade Desk",
+    "patterns": [
+      "insight.adsrvr.org",
+      "js.adsrvr.org",
+      "match.adsrvr.org"
+    ]
+  },
+  {
+    "name": "Braze",
+    "patterns": [
+      "sdk.iad-01.braze.com",
+      "sdk.iad-02.braze.com",
+      "sdk.iad-03.braze.com",
+      "sdk.fra-01.braze.eu"
+    ]
+  },
+  {
+    "name": "Klaviyo",
+    "patterns": [
+      "static.klaviyo.com",
+      "a.klaviyo.com"
+    ]
+  },
+  {
+    "name": "Zendesk",
+    "patterns": [
+      "static.zdassets.com",
+      "ekr.zdassets.com"
+    ]
+  },
+  {
+    "name": "Pardot / Salesforce",
+    "patterns": [
+      "pi.pardot.com",
+      "go.pardot.com"
+    ]
+  },
+  {
+    "name": "Chartbeat",
+    "patterns": [
+      "static.chartbeat.com",
+      "ping.chartbeat.net"
+    ]
+  },
+  {
+    "name": "Parse.ly",
+    "patterns": [
+      "srv.pixel.parsely.com",
+      "cdn.parsely.com"
+    ]
+  },
+  {
+    "name": "Nielsen",
+    "patterns": [
+      "secure-dcr.imrworldwide.com",
+      "cdn-gl.imrworldwide.com"
+    ]
+  },
+  {
+    "name": "Comscore",
+    "patterns": [
+      "sb.scorecardresearch.com",
+      "b.scorecardresearch.com"
+    ]
+  },
+  {
+    "name": "Quantcast",
+    "patterns": [
+      "pixel.quantserve.com",
+      "secure.quantserve.com"
+    ]
+  },
+  {
+    "name": "Amazon Advertising",
+    "patterns": [
+      "aax.amazon-adsystem.com",
+      "c.amazon-adsystem.com",
+      "fls-na.amazon.com"
+    ]
+  },
+  {
+    "name": "Rakuten / LinkShare",
+    "patterns": [
+      "tag.rmp.rakuten.com",
+      "track.linksynergy.com"
+    ]
+  },
+  {
+    "name": "CJ Affiliate",
+    "patterns": [
+      "www.emjcd.com",
+      "dpm.demdex.net/ibs"
+    ]
+  },
+  {
+    "name": "Tealium",
+    "patterns": [
+      "tags.tiqcdn.com",
+      "collect.tealiumiq.com"
+    ]
+  },
+  {
+    "name": "mParticle",
+    "patterns": [
+      "jssdks.mparticle.com",
+      "nativesdks.mparticle.com"
+    ]
+  },
+  {
+    "name": "Contentsquare",
+    "patterns": [
+      "ew.cs-snowplow.io",
+      "tag-eu1.iqvia.io"
+    ]
+  },
+  {
+    "name": "Snowplow",
+    "patterns": [
+      "snowplow.io",
+      "sp.example.com",
+      "collector.snplow.net"
+    ]
+  },
+  {
+    "name": "Pendo",
+    "patterns": [
+      "cdn.pendo.io",
+      "data.pendo.io",
+      "app.pendo.io"
+    ]
+  },
+  {
+    "name": "WalkMe",
+    "patterns": [
+      "cdn.walkme.com",
+      "ec.walkme.com"
+    ]
+  },
+  {
+    "name": "Matomo / Piwik",
+    "patterns": [
+      "matomo.php",
+      "piwik.php",
+      "matomo.js",
+      "piwik.js"
+    ]
+  },
+  {
+    "name": "Plausible Analytics",
+    "patterns": [
+      "plausible.io/js",
+      "plausible.io/api/event"
+    ]
+  },
+  {
+    "name": "Fathom Analytics",
+    "patterns": [
+      "cdn.usefathom.com",
+      "api.usefathom.com"
+    ]
+  },
+  {
+    "name": "Woopra",
+    "patterns": [
+      "static.woopra.com",
+      "www.woopra.com/track"
+    ]
+  },
+  {
+    "name": "Mouseflow",
+    "patterns": [
+      "cdn.mouseflow.com"
+    ]
+  },
+  {
+    "name": "SessionCam",
+    "patterns": [
+      "d2oh4tlt9mrke9.cloudfront.net/record/js"
+    ]
+  },
+  {
+    "name": "Inspectlet",
+    "patterns": [
+      "cdn.inspectlet.com"
+    ]
+  },
+  {
+    "name": "Quora Pixel",
+    "patterns": [
+      "q.quora.com"
+    ]
+  },
+  {
+    "name": "Reddit Pixel",
+    "patterns": [
+      "alb.reddit.com",
+      "redditmedia.com/pixels"
+    ]
+  },
+  {
+    "name": "Adroll",
+    "patterns": [
+      "d.adroll.com",
+      "s.adroll.com"
+    ]
+  },
+  {
+    "name": "Sentry (Error Tracking)",
+    "patterns": [
+      "browser.sentry-cdn.com",
+      "ingest.sentry.io"
+    ]
+  },
+  {
+    "name": "New Relic",
+    "patterns": [
+      "bam.nr-data.net",
+      "js-agent.newrelic.com"
+    ]
+  },
+  {
+    "name": "Dynatrace",
+    "patterns": [
+      "dynatrace.com/api",
+      "bf55329.live.dynatrace.com"
+    ]
+  },
+  {
+    "name": "Elastic APM",
+    "patterns": [
+      "apm.elastic.co"
+    ]
+  }
+]

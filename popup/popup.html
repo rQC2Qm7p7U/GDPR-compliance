@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GDPR/CCPA/ZZPL Cookie Consent Auditor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <svg class="shield-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 22C12 22 20 18 20 12V5L12 2L4 5V12C4 12 4 18 12 22Z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-text">Privacy<span class="gradient-text">Auditor</span></span>
+      </div>
+      <div id="cmp-badge" class="badge badge-inactive">No CMP Detected</div>
+    </header>
+
+    <!-- Audit Standard Simulation Selector -->
+    <div class="selector-card">
+      <div class="selector-row">
+        <label for="audit-mode-select" class="selector-label">Audit Profile</label>
+        <select id="audit-mode-select" class="audit-mode-select">
+          <option value="auto">Auto-Detect (IP / TLD)</option>
+          <option value="gdpr">Strict GDPR (Europe)</option>
+          <option value="ccpa">Strict CCPA (USA)</option>
+          <option value="zzpl">Strict ZZPL (Montenegro)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="tab-bar">
+      <button class="tab-btn active" data-tab="tab-audits">Audits & Logs</button>
+      <button class="tab-btn" data-tab="tab-zzpl">Compliance Checklist</button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="app-main">
+      
+      <!-- TAB 1: Real-time Audits & Outgoing Violations -->
+      <div id="tab-audits" class="tab-content active">
+        <!-- Domain Details -->
+        <div class="domain-card">
+          <div class="domain-label">Active Website</div>
+          <div id="active-domain" class="domain-value">Loading domain...</div>
+        </div>
+
+        <!-- Consent Status Grid -->
+        <div class="status-grid">
+          <div class="status-box">
+            <div class="box-label">Consent State</div>
+            <div id="consent-status" class="status-value val-unknown">Unknown</div>
+          </div>
+          <div class="status-box">
+            <div class="box-label">CMP Standard</div>
+            <div id="cmp-standard" class="status-value text-muted">—</div>
+          </div>
+        </div>
+
+        <!-- Compliance summary -->
+        <div id="compliance-summary" class="summary-banner alert-neutral">
+          <div class="summary-icon-wrapper">
+            <span id="summary-icon">ℹ️</span>
+          </div>
+          <div class="summary-text-wrapper">
+            <div id="summary-title" class="summary-title">Loading Page Audit</div>
+            <div id="summary-desc" class="summary-desc">Analyzing network traffic for violations...</div>
+          </div>
+        </div>
+
+        <!-- Violations List -->
+        <section class="violations-section">
+          <div class="section-header">
+            <h2>Violations Log (<span id="violations-count">0</span>)</h2>
+          </div>
+          <div id="violations-list" class="violations-list empty">
+            <div class="empty-state">
+              <div class="empty-icon">✓</div>
+              <div class="empty-title">No violations detected</div>
+              <div class="empty-desc">No tracking scripts have loaded illegally.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 2: Legal Compliance Checklist (Swapped dynamically via JS) -->
+      <div id="tab-zzpl" class="tab-content">
+        <div class="zzpl-jurisdiction-card">
+          <div id="checklist-title" class="jur-title">Compliance Audit</div>
+          <div id="checklist-detection-info" class="jur-desc">Checking website context...</div>
+        </div>
+        
+        <!-- SECTION 1: Privacy Policy -->
+        <div class="checklist-group">
+          <h3 id="group-title-policy">1. Privacy Policy</h3>
+          
+          <!-- Auto Check: Policy Link exists -->
+          <div class="checklist-item auto-item">
+            <div id="check-policy-exists" class="chk-status status-loading">⏳</div>
+            <div class="chk-content">
+              <div class="chk-title">Privacy Policy Detected</div>
+              <div class="chk-desc">Checks for a visible privacy policy link on the page.</div>
+            </div>
+          </div>
+
+          <!-- Auto Check: Policy in Footer -->
+          <div class="checklist-item auto-item">
+            <div id="check-policy-footer" class="chk-status status-loading">⏳</div>
+            <div class="chk-content">
+              <div class="chk-title">Accessible in Footer</div>
+              <div class="chk-desc">Checks if the policy link is in the footer or bottom scroll area.</div>
+            </div>
+          </div>
+          
+          <!-- Container for dynamic manual checklist items in Section 1 -->
+          <div id="manual-policy-container" class="manual-container"></div>
+        </div>
+
+        <!-- SECTION 2: Cookie Banner -->
+        <div class="checklist-group">
+          <h3 id="group-title-cookie">2. Cookie Banner & Options</h3>
+          
+          <!-- Auto Check: Pre-Consent Block -->
+          <div class="checklist-item auto-item">
+            <div id="check-cookie-block" class="chk-status status-loading">⏳</div>
+            <div class="chk-content">
+              <div class="chk-title">Pre-Consent Tracker Block</div>
+              <div class="chk-desc">Verifies cookies/trackers are blocked before user accept/reject action.</div>
+            </div>
+          </div>
+          
+          <!-- Auto Check: First-layer Reject All button check -->
+          <div class="checklist-item auto-item">
+            <div id="check-cookie-reject" class="chk-status status-loading">⏳</div>
+            <div class="chk-content">
+              <div class="chk-title">First-layer "Reject All"</div>
+              <div class="chk-desc">Checks if a direct "Reject All" option is present on the main banner.</div>
+            </div>
+          </div>
+          
+          <!-- Container for dynamic manual checklist items in Section 2 -->
+          <div id="manual-cookie-container" class="manual-container"></div>
+        </div>
+
+        <!-- SECTION 3: Forms & Data Collection -->
+        <div class="checklist-group">
+          <h3 id="group-title-forms">3. Data Collection Forms</h3>
+          
+          <!-- Auto Check: Forms Prechecked checkboxes check -->
+          <div class="checklist-item auto-item">
+            <div id="check-form-prechecked" class="chk-status status-loading">⏳</div>
+            <div class="chk-content">
+              <div class="chk-title">Active Opt-In (No pre-checks)</div>
+              <div class="chk-desc">Checks if input checkboxes inside forms are blank by default.</div>
+            </div>
+          </div>
+
+          <!-- Auto Check: Form Link to Policy -->
+          <div class="checklist-item auto-item">
+            <div id="check-form-link" class="chk-status status-loading">⏳</div>
+            <div class="chk-content">
+              <div class="chk-title">Privacy Link in Forms</div>
+              <div class="chk-desc">Checks if forms contain a link to the policy near submit.</div>
+            </div>
+          </div>
+          
+          <!-- Container for dynamic manual checklist items in Section 3 -->
+          <div id="manual-forms-container" class="manual-container"></div>
+        </div>
+
+        <!-- SECTION 4: Technical Security -->
+        <div class="checklist-group">
+          <h3 id="group-title-security">4. Security & Infrastructure</h3>
+          
+          <!-- Auto Check: HTTPS Security -->
+          <div class="checklist-item auto-item">
+            <div id="check-security-https" class="chk-status status-loading">⏳</div>
+            <div class="chk-content">
+              <div class="chk-title">HTTPS Security Protocol</div>
+              <div class="chk-desc">Verifies if the connection is encrypted (SSL/TLS certificate).</div>
+            </div>
+          </div>
+          
+          <!-- Container for dynamic manual checklist items in Section 4 -->
+          <div id="manual-security-container" class="manual-container"></div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Rules Database Status Panel -->
+    <div class="rules-panel" id="rules-panel">
+      <div class="rules-info">
+        <svg class="rules-db-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+        </svg>
+        <div class="rules-text">
+          <span class="rules-label">Rules Database</span>
+          <span id="rules-status-text" class="rules-meta">Checking...</span>
+        </div>
+      </div>
+      <button id="btn-update-rules" class="btn-update-rules" title="Fetch latest CMP selectors and tracker patterns">
+        <svg id="update-rules-icon" class="update-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Footer Actions -->
+    <footer class="app-footer">
+      <button id="btn-reset" class="btn btn-secondary" title="Clears cookies/storage and reloads the active website">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        Clear &amp; Reset
+      </button>
+      <button id="btn-export" class="btn btn-primary" disabled>
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        Export Audit JSON
+      </button>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

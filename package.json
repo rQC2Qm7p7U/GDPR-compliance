@@ -1,0 +1,17 @@
+{
+  "name": "gdpr-ccpa-consent-auditor",
+  "version": "1.0.0",
+  "description": "Chrome extension to audit GDPR/CCPA cookie consent compliance on websites.",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "keywords": [
+    "chrome-extension",
+    "gdpr",
+    "ccpa",
+    "cookie-consent",
+    "auditor"
+  ],
+  "author": "Privacy Tools Dev",
+  "license": "MIT"
+}

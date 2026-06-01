@@ -1,0 +1,59 @@
+{
+  "name": "GDPR/CCPA Cookie Consent Auditor",
+  "version": "1.0.0",
+  "manifest_version": 3,
+  "description": "Audits websites for privacy compliance by checking if tracking scripts load before or after consent rejection.",
+  "permissions": [
+    "webRequest",
+    "storage",
+    "cookies",
+    "tabs",
+    "sidePanel",
+    "scripting",
+    "alarms"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*",
+    "https://raw.githubusercontent.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["storage-helper.js", "content.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
+    },
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["main-world-injector.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "popup/popup.html"
+  }
+}
