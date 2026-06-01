@@ -98,6 +98,9 @@ function computeStorageDelta(before, after) {
 
 function matchStorageSignature(signature) {
   try {
+    if (!signature || !signature.key || typeof signature.key !== 'string' || signature.key.trim().length < 2) {
+      return false;
+    }
     const { storageType, key, valPattern } = signature;
     let currentVal = null;
 

@@ -6,14 +6,42 @@ let userCountryCode = null;
 
 // Geolocation query to determine user country code (runs on service worker startup)
 async function checkUserLocation() {
+  // 1. First inspect browser language settings for quick regional hints
   try {
-    const response = await fetch('https://freeipapi.com/api/json');
+    const langs = await new Promise((resolve) => {
+      if (chrome.i18n && typeof chrome.i18n.getAcceptLanguages === 'function') {
+        chrome.i18n.getAcceptLanguages((languages) => resolve(languages || []));
+      } else {
+        resolve(navigator.languages || []);
+      }
+    });
+
+    for (const lang of langs) {
+      const cleanLang = lang.toLowerCase();
+      if (cleanLang === 'me' || cleanLang.endsWith('-me') || cleanLang.includes('sr-') || cleanLang.includes('hr-') || cleanLang.includes('bs-')) {
+        userCountryCode = 'ME';
+        console.log('[GDPR Audit] Location heuristically set to ME from browser languages:', lang);
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('[GDPR Audit] Language accept-header check failed:', e);
+  }
+
+  // 2. Fallback to API check with a strict timeout to avoid freezing startup
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch('https://freeipapi.com/api/json', { signal: controller.signal });
+    clearTimeout(timeoutId);
+
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     userCountryCode = data.countryCode;
-    console.log('[GDPR Audit] User location resolved:', userCountryCode);
+    console.log('[GDPR Audit] User location resolved via API:', userCountryCode);
   } catch (err) {
-    console.error('[GDPR Audit] Location query failed:', err);
+    console.warn('[GDPR Audit] Location API query failed/timed out, defaulting to null:', err.message);
   }
 }
 
@@ -283,6 +311,73 @@ function resolveJurisdiction(urlStr, lang, auditMode) {
   return null;
 }
 
+const tabStates = new Map();
+const loadingPromises = new Map();
+
+function createDefaultState(url = '', auditMode = 'auto') {
+  return {
+    consentStatus: 'unknown',
+    source: null,
+    violations: [],
+    isHttps: url ? url.startsWith('https:') : false,
+    privacyPolicyLink: null,
+    jurisdiction: resolveJurisdiction(url, null, auditMode),
+    lang: null,
+    userCountry: userCountryCode,
+    auditMode: auditMode,
+    policyInFooter: false,
+    preCheckedCheckboxes: false,
+    hasFormPolicyLink: false,
+    cmpRejectStatus: 'no_cmp',
+    policyDeepScan: null
+  };
+}
+
+async function getTabState(tabId, fallbackUrl = '') {
+  if (tabStates.has(tabId)) {
+    return tabStates.get(tabId);
+  }
+  if (loadingPromises.has(tabId)) {
+    return loadingPromises.get(tabId);
+  }
+
+  const key = `tab_${tabId}`;
+  const promise = chrome.storage.session.get(key).then(async (data) => {
+    let state = data[key];
+    if (!state) {
+      let auditMode = 'auto';
+      try {
+        const storageData = await chrome.storage.local.get('globalAuditMode');
+        auditMode = storageData.globalAuditMode || 'auto';
+      } catch (e) {
+        console.error('Failed to read audit mode:', e);
+      }
+      state = createDefaultState(fallbackUrl, auditMode);
+    }
+    tabStates.set(tabId, state);
+    loadingPromises.delete(tabId);
+    return state;
+  });
+
+  loadingPromises.set(tabId, promise);
+  return promise;
+}
+
+async function saveTabState(tabId, state) {
+  tabStates.set(tabId, state);
+  const key = `tab_${tabId}`;
+  try {
+    await chrome.storage.session.set({ [key]: state });
+  } catch (e) {
+    console.error(`[GDPR Audit] Failed to save state for tab ${tabId}:`, e);
+  }
+}
+
+function clearTabState(tabId) {
+  tabStates.delete(tabId);
+  loadingPromises.delete(tabId);
+}
+
 // Intercept network requests
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
@@ -298,8 +393,6 @@ async function processRequest(details) {
   // Ignore background/extension requests
   if (tabId < 0) return;
 
-  const key = `tab_${tabId}`;
-
   // Reset tab state when navigating to a new page (main_frame request)
   if (type === 'main_frame') {
     let auditMode = 'auto';
@@ -310,23 +403,8 @@ async function processRequest(details) {
       console.error('Failed to read audit mode:', e);
     }
 
-    const freshState = {
-      consentStatus: 'unknown',
-      source: null,
-      violations: [],
-      isHttps: url.startsWith('https:'),
-      privacyPolicyLink: null,
-      jurisdiction: resolveJurisdiction(url, null, auditMode),
-      lang: null,
-      userCountry: userCountryCode,
-      auditMode: auditMode,
-      policyInFooter: false,
-      preCheckedCheckboxes: false,
-      hasFormPolicyLink: false,
-      cmpRejectStatus: 'no_cmp',
-      policyDeepScan: null
-    };
-    await chrome.storage.session.set({ [key]: freshState });
+    const freshState = createDefaultState(url, auditMode);
+    await saveTabState(tabId, freshState);
     
     // Clear badge count
     try {
@@ -342,8 +420,7 @@ async function processRequest(details) {
   if (!trackerName) return;
 
   // Retrieve current tab audit state
-  const data = await chrome.storage.session.get(key);
-  const state = data[key] || { consentStatus: 'unknown', source: null, violations: [] };
+  const state = await getTabState(tabId, url);
 
   // If consent is already established as accepted, ignore tracker requests
   if (state.consentStatus === 'accepted') return;
@@ -384,7 +461,7 @@ async function processRequest(details) {
     };
 
     state.violations.push(violation);
-    await chrome.storage.session.set({ [key]: state });
+    await saveTabState(tabId, state);
 
     // Update extension badge count
     updateBadge(tabId, state.violations.length);
@@ -412,9 +489,7 @@ async function auditCookies(tabId, urlStr) {
   }
 
   try {
-    const key = `tab_${tabId}`;
-    const data = await chrome.storage.session.get(key);
-    const state = data[key] || { consentStatus: 'unknown', source: null, violations: [] };
+    const state = await getTabState(tabId, urlStr);
 
     // If consent is already established as accepted, ignore cookie scanning
     if (state.consentStatus === 'accepted') return;
@@ -477,7 +552,7 @@ async function auditCookies(tabId, urlStr) {
     }
 
     if (stateUpdated) {
-      await chrome.storage.session.set({ [key]: state });
+      await saveTabState(tabId, state);
       updateBadge(tabId, state.violations.length);
     }
   } catch (err) {
@@ -511,15 +586,21 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     }
   } else if (message.type === 'LEARNED_SIGNATURE') {
     const { signature } = message;
-    if (signature && signature.domain && signature.key) {
+    if (signature && signature.domain && signature.key && typeof signature.key === 'string' && signature.key.trim().length >= 2) {
       const storageKey = `learned_signatures_${signature.domain}`;
       chrome.storage.local.get(storageKey, (res) => {
         let signatures = res[storageKey] || [];
         // Prevent duplicate signatures for the same key and storage type
         signatures = signatures.filter(s => !(s.key === signature.key && s.storageType === signature.storageType));
         signatures.push(signature);
+        
+        // Quota check: limit to max 5 signatures per domain (FIFO eviction)
+        if (signatures.length > 5) {
+          signatures = signatures.slice(signatures.length - 5);
+        }
+        
         chrome.storage.local.set({ [storageKey]: signatures }, () => {
-          console.log(`[GDPR Audit] Storage signature learned and persisted for ${signature.domain}:`, signature);
+          console.log(`[GDPR Audit] Storage signature learned and persisted (capped at 5) for ${signature.domain}:`, signature);
         });
       });
     }
@@ -527,24 +608,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
 });
 
 async function handleDomScrape(tabId, scrapeData, tabUrl) {
-  const key = `tab_${tabId}`;
-  const data = await chrome.storage.session.get(key);
-  const state = data[key] || { 
-    consentStatus: 'unknown', 
-    source: null, 
-    violations: [], 
-    isHttps: false, 
-    privacyPolicyLink: null, 
-    jurisdiction: null, 
-    lang: null, 
-    userCountry: null, 
-    auditMode: 'auto',
-    policyInFooter: false,
-    preCheckedCheckboxes: false,
-    hasFormPolicyLink: false,
-    cmpRejectStatus: 'no_cmp',
-    policyDeepScan: null
-  };
+  const state = await getTabState(tabId, tabUrl);
 
   const isTopFrame = scrapeData.isTopFrame !== false;
 
@@ -608,13 +672,11 @@ async function handleDomScrape(tabId, scrapeData, tabUrl) {
     }
   }
 
-  await chrome.storage.session.set({ [key]: state });
+  await saveTabState(tabId, state);
 }
 
 async function handleConsentUpdate(tabId, status, source, tabUrl, eventStatus) {
-  const key = `tab_${tabId}`;
-  const data = await chrome.storage.session.get(key);
-  const state = data[key] || { consentStatus: 'unknown', source: null, violations: [] };
+  const state = await getTabState(tabId, tabUrl);
 
   // Universal rule: If the consent is already established (accepted/rejected), 
   // do not allow it to revert to 'unknown' unless the CMP banner is actually shown again (cmpuishown)
@@ -693,13 +755,14 @@ async function handleConsentUpdate(tabId, status, source, tabUrl, eventStatus) {
       }
     }
 
-    await chrome.storage.session.set({ [key]: state });
+    await saveTabState(tabId, state);
     console.log(`[GDPR Audit] Tab ${tabId} updated: Status = ${status}, Source = ${source}, Event = ${eventStatus}`);
   }
 }
 
 // Clean up stored session states when tabs are closed
 chrome.tabs.onRemoved.addListener(async (tabId) => {
+  clearTabState(tabId);
   const key = `tab_${tabId}`;
   await chrome.storage.session.remove(key);
 });

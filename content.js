@@ -5,7 +5,11 @@
 
 // Check if the extension context is still valid (not invalidated by a reload/update)
 function isContextValid() {
-  return typeof chrome !== 'undefined' && chrome.runtime && !!chrome.runtime.id;
+  try {
+    return typeof chrome !== 'undefined' && !!chrome.runtime && !!chrome.runtime.id;
+  } catch (e) {
+    return false;
+  }
 }
 
 // Send message to background script only if context is valid
