@@ -331,12 +331,31 @@ function checkFormCheckboxes() {
 function checkFormPolicyLink(policyLink) {
   const forms = document.getElementsByTagName('form');
   if (forms.length === 0) return 'no_forms';
-  if (!policyLink) return false;
   for (let form of forms) {
     const links = form.querySelectorAll('a');
     for (let link of links) {
       const href = link.getAttribute('href');
-      if (href && (href.includes(policyLink) || policyLink.includes(href))) return true;
+      const text = link.textContent || '';
+      if (href) {
+        // 1. Direct match with globally detected policy link
+        if (policyLink && (href.includes(policyLink) || policyLink.includes(href))) {
+          return true;
+        }
+        
+        // 2. Keyword-based match inside the form
+        const hrefLower = href.toLowerCase();
+        const textLower = text.toLowerCase().trim();
+        const privacyKeywords = [
+          'privacy', 'datenschutz', 'confidentialite', 'privacidad', 'regulamin',
+          'imprint', 'impressum', 'cookie', 'legal', 'datenschutzerklärung',
+          'terms', 'conditions', 'zastita', 'kolačići', 'polise', 'politika',
+          'richtlinie', 'declaration'
+        ];
+        
+        if (privacyKeywords.some(kw => hrefLower.includes(kw) || textLower.includes(kw))) {
+          return true;
+        }
+      }
     }
   }
   return false;
