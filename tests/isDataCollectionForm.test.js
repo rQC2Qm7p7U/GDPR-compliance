@@ -160,4 +160,68 @@ describe('checkPolicyInFooter test suite', () => {
     const placeholder = 'javascript:void(0)/*' + encodeURIComponent('datenschutz') + '*/';
     expect(checkPolicyInFooter(placeholder)).toBe(true);
   });
+
+  test('should return true if privacy link is inside a container with class or ID containing footer keywords', () => {
+    const customFooter = document.createElement('div');
+    customFooter.className = 'page-footer-container';
+    customFooter.innerHTML = `
+      <a href="https://example.com/privacy">Privacy Policy</a>
+    `;
+    document.body.appendChild(customFooter);
+    expect(checkPolicyInFooter('https://example.com/privacy')).toBe(true);
+
+    const bottomLinks = document.createElement('div');
+    bottomLinks.id = 'bottom-links-section';
+    bottomLinks.innerHTML = `
+      <a href="https://example.com/privacy">Privacy Policy</a>
+    `;
+    document.body.appendChild(bottomLinks);
+    expect(checkPolicyInFooter('https://example.com/privacy')).toBe(true);
+  });
+});
+
+describe('scanPrivacyPolicy test suite', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  test('should find policy by visible text', () => {
+    const link = document.createElement('a');
+    link.href = 'https://example.com/privacy';
+    link.textContent = 'Privacy Policy';
+    document.body.appendChild(link);
+    expect(scanPrivacyPolicy()).toBe('https://example.com/privacy');
+  });
+
+  test('should find policy by aria-label if text is empty', () => {
+    const link = document.createElement('a');
+    link.href = 'https://example.com/privacy';
+    link.setAttribute('aria-label', 'privacy disclosures');
+    document.body.appendChild(link);
+    expect(scanPrivacyPolicy()).toBe('https://example.com/privacy');
+  });
+
+  test('should find policy by image alt text inside the link', () => {
+    const link = document.createElement('a');
+    link.href = 'https://example.com/privacy';
+    link.innerHTML = '<img alt="datenschutzerklärung" src="icon.png" />';
+    document.body.appendChild(link);
+    expect(scanPrivacyPolicy()).toBe('https://example.com/privacy');
+  });
+
+  test('should find policy by title attribute if text is empty', () => {
+    const link = document.createElement('a');
+    link.href = 'https://example.com/privacy';
+    link.setAttribute('title', 'legal notice');
+    document.body.appendChild(link);
+    expect(scanPrivacyPolicy()).toBe('https://example.com/privacy');
+  });
+
+  test('should find policy by href-based keyword match even if text has no keyword', () => {
+    const link = document.createElement('a');
+    link.href = 'https://example.com/legal-notice.html';
+    link.textContent = 'General Rules';
+    document.body.appendChild(link);
+    expect(scanPrivacyPolicy()).toBe('https://example.com/legal-notice.html');
+  });
 });

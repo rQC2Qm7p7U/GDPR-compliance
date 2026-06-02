@@ -276,13 +276,33 @@ function scanPrivacyPolicy() {
   // We scan both anchors (a) and interactive link elements (button, role="link") to support SPAs like mobile.de
   const links = document.querySelectorAll('a, button, [role="link"]');
   for (let link of links) {
-    const text = link.textContent ? link.textContent.toLowerCase().trim() : '';
+    let text = link.textContent ? link.textContent.toLowerCase().trim() : '';
+    if (!text) {
+      const ariaLabel = link.getAttribute('aria-label') || '';
+      const title = link.getAttribute('title') || '';
+      const img = link.querySelector('img');
+      const alt = img ? img.getAttribute('alt') || '' : '';
+      text = (ariaLabel + ' ' + title + ' ' + alt).toLowerCase().trim();
+    }
+    
     let href = link.getAttribute('href') || link.getAttribute('data-href') || link.getAttribute('data-url') || '';
     const matchesKeyword = keywords.some(keyword => text.includes(keyword));
-    if (matchesKeyword) {
+    
+    let matchesHref = false;
+    if (href) {
+      const hrefLower = href.toLowerCase();
+      const hrefKeywords = [
+        'privacy-policy', 'privacypolicy', 'privacy_policy', '/privacy',
+        'datenschutz', 'impressum', 'cookie-policy', 'cookiepolicy', 'cookie_policy',
+        'legal-notice', 'legalnotice', 'legal_notice', '/legal', '/cookie', '/terms'
+      ];
+      matchesHref = hrefKeywords.some(kw => hrefLower.includes(kw));
+    }
+
+    if (matchesKeyword || matchesHref) {
       if (!href) {
         // Return a dynamic link placeholder using text content
-        return 'javascript:void(0)/*' + encodeURIComponent(text) + '*/';
+        return 'javascript:void(0)/*' + encodeURIComponent(text || 'privacy') + '*/';
       }
       try {
         return new URL(href, window.location.href).href;
@@ -300,14 +320,21 @@ function checkPolicyInFooter(policyLink) {
   const links = document.querySelectorAll('a, button, [role="link"]');
   for (let link of links) {
     const href = link.getAttribute('href') || '';
-    const text = (link.textContent || '').toLowerCase().trim();
+    let linkText = (link.textContent || '').toLowerCase().trim();
+    if (!linkText) {
+      const ariaLabel = link.getAttribute('aria-label') || '';
+      const title = link.getAttribute('title') || '';
+      const img = link.querySelector('img');
+      const alt = img ? img.getAttribute('alt') || '' : '';
+      linkText = (ariaLabel + ' ' + title + ' ' + alt).toLowerCase().trim();
+    }
     
     let isMatch = false;
     if (href && (href.includes(policyLink) || policyLink.includes(href))) {
       isMatch = true;
     } else if (policyLink.includes('/*') && policyLink.includes('*/')) {
       const decodedText = decodeURIComponent(policyLink.split('/*')[1].split('*/')[0]);
-      if (text.includes(decodedText) || decodedText.includes(text)) {
+      if (linkText.includes(decodedText) || decodedText.includes(linkText)) {
         isMatch = true;
       }
     }
@@ -315,7 +342,16 @@ function checkPolicyInFooter(policyLink) {
     if (isMatch) {
       let parent = link.parentElement;
       while (parent) {
-        if (parent.tagName.toLowerCase() === 'footer') return true;
+        const tagName = parent.tagName.toLowerCase();
+        if (tagName === 'footer') return true;
+        
+        const id = (parent.id || '').toLowerCase();
+        const className = (typeof parent.className === 'string' ? parent.className : parent.getAttribute('class') || '').toLowerCase();
+        const footerKeywords = ['footer', 'bottom-links', 'bottom-nav', 'legal-links'];
+        if (footerKeywords.some(kw => id.includes(kw) || className.includes(kw))) {
+          return true;
+        }
+        
         parent = parent.parentElement;
       }
       try {
