@@ -1040,7 +1040,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       manualChecklist,
       policyDeepScan,
       violationsCount,
-      violations
+      violations,
+      userCountry
     } = exportData;
 
     const dateStr = new Date(auditTimestamp).toLocaleString();
@@ -1104,10 +1105,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
     }
 
+    let policyDesc = `Checks for a visible privacy policy link matching ${resolvedJurisdiction} keywords.`;
+    if (technicalAudits.privacyPolicyLink) {
+      const cleanUrl = escapeHtml(technicalAudits.privacyPolicyLink);
+      const displayUrl = cleanUrl.length > 50 ? cleanUrl.substring(0, 47) + '...' : cleanUrl;
+      policyDesc += ` Found: ${displayUrl}`;
+      if (policyDeepScan) {
+        const details = [];
+        if (policyDeepScan.hasDpo) details.push('DPO/Contacts');
+        if (policyDeepScan.hasTransparency) details.push('Transparency');
+        if (policyDeepScan.hasRights) details.push('User Rights');
+        if (!policyDeepScan.isPlainLanguage) details.push('High legalese');
+        if (details.length > 0) {
+          policyDesc += ` | Scan findings: ${details.join(', ')}`;
+        }
+      }
+    }
+
     // Generate automated checklist cards
     const checks = [
       { name: "HTTPS Security Protocol", val: technicalAudits.isHttpsSecure, desc: "Verifies the website uses SSL/TLS encryption." },
-      { name: "Privacy Policy Link Detected", val: !!technicalAudits.privacyPolicyLink, desc: `Checks for a visible privacy policy link matching ${resolvedJurisdiction} keywords.` },
+      { name: "Privacy Policy Link Detected", val: !!technicalAudits.privacyPolicyLink, desc: policyDesc },
       { name: "Policy Position in Footer", val: technicalAudits.policyInFooter, desc: "Checks if the policy link is in the footer or bottom scroll area." },
       { name: "Pre-Consent Tracker Block", val: technicalAudits.preConsentBlocked, desc: "Verifies cookies/trackers are blocked before user consent action." },
       { name: "First-layer 'Reject All' Button", val: technicalAudits.cmpRejectButtonStatus === 'detected', desc: "Verifies a Reject/Decline button is directly visible on the banner layer.", warn: technicalAudits.cmpRejectButtonStatus === 'unequal' },
@@ -2040,8 +2058,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         <span class="meta-value">${escapeHtml(selectedAuditMode.toUpperCase())}</span>
       </div>
       <div class="meta-item">
-        <span class="meta-label">Jurisdiction standard</span>
+        <span class="meta-label">Jurisdiction Standard</span>
         <span class="meta-value">${escapeHtml(resolvedJurisdiction)}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">User Country</span>
+        <span class="meta-value">${escapeHtml(userCountry || 'Not Detected')}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Page Language</span>
+        <span class="meta-value">${escapeHtml(technicalAudits.pageLanguage ? technicalAudits.pageLanguage.toUpperCase() : 'Not Detected')}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Consent State</span>
+        <span class="meta-value">${escapeHtml(consentStatus ? consentStatus.toUpperCase() : 'UNKNOWN')}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">CMP Standard</span>
+        <span class="meta-value">${escapeHtml(cmpStandard ? (cmpStandard === 'IAB_TCF' ? 'IAB TCF v2.2' : cmpStandard) : 'None Detected')}</span>
       </div>
       <div class="meta-item">
         <span class="meta-label">Overall Grade</span>
@@ -2159,7 +2193,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       },
       policyDeepScan: tabState.policyDeepScan,
       violationsCount: tabState.violations.length,
-      violations: tabState.violations
+      violations: tabState.violations,
+      userCountry: tabState.userCountry
     };
 
     const reportHtml = generateHtmlReport(exportData);
