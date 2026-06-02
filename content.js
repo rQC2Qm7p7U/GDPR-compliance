@@ -767,26 +767,8 @@ function scanPrivacyPolicyText(text) {
 }
 
 // ─── State ────────────────────────────────────────────────────────────────
-let fetchedPolicyUrl = null;
 let currentPolicyScan = null;
 let lastCmpRejectStatus = 'no_cmp';
-
-async function runPolicyDeepScan(policyUrl) {
-  if (fetchedPolicyUrl === policyUrl) return;
-  fetchedPolicyUrl = policyUrl;
-  try {
-    const response = await fetch(policyUrl);
-    if (!response.ok) throw new Error(`Status ${response.status}`);
-    const html = await response.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const text = doc.body ? doc.body.innerText : '';
-    currentPolicyScan = scanPrivacyPolicyText(text);
-    sendDOMData();
-  } catch (err) {
-    console.warn('[GDPR Audit] Privacy policy pre-fetch failed:', err.message);
-  }
-}
 
 // ─── Main DOM data sender ─────────────────────────────────────────────────
 function sendDOMData() {
@@ -811,8 +793,9 @@ function sendDOMData() {
 
   if (isCurrentlyPolicyPage) {
     currentPolicyScan = scanPrivacyPolicyText(document.body.innerText);
-  } else if (privacyPolicyLink && !currentPolicyScan && privacyPolicyLink.startsWith(window.location.origin)) {
-    runPolicyDeepScan(privacyPolicyLink);
+  } else if (privacyPolicyLink && !currentPolicyScan) {
+    // Notify background script to fetch and scan this URL (bypassing CORS)
+    safeSendMessage({ type: 'SCAN_POLICY_URL', url: privacyPolicyLink });
   }
 
   safeSendMessage({
