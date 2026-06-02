@@ -1206,16 +1206,20 @@ document.addEventListener('DOMContentLoaded', async () => {
           let desc = "";
 
           const jData = CHECKLIST_DATA[resolvedJurisdiction];
+          let found = false;
           if (jData && jData.manual_items) {
             for (const grp of Object.values(jData.manual_items)) {
               const match = grp.find(item => item.id === k);
               if (match) {
                 title = match.title;
                 desc = match.desc;
+                found = true;
                 break;
               }
             }
           }
+
+          if (!found) return;
 
           manualCards += `
             <div class="checklist-card ${statusClass}">
