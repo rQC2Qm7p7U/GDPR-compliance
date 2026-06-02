@@ -34,9 +34,12 @@ global.chrome = {
 };
 global.userCountryCode = 'US';
 
-// Load background.js functions into global scope
-// Mock importScripts, replace block-scoped userCountryCode with global scope, and disable auto-run side effects
 global.importScripts = jest.fn();
+
+// Load bg-trackers.js which defines resolveJurisdiction
+const bgTrackersCode = fs.readFileSync(path.resolve(__dirname, '../bg-trackers.js'), 'utf8');
+eval(bgTrackersCode);
+
 const bgCode = fs.readFileSync(path.resolve(__dirname, '../background.js'), 'utf8')
   .replace('let userCountryCode = null;', 'global.userCountryCode = null;')
   .replace('checkUserLocation();', '// checkUserLocation();')

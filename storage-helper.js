@@ -2,6 +2,28 @@
  * GDPR Consent Auditor - Storage Snapshot & Delta Utilities
  */
 
+// Check if the extension context is still valid (not invalidated by a reload/update)
+function isContextValid() {
+  try {
+    return typeof chrome !== 'undefined' && !!chrome.runtime && !!chrome.runtime.id;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Send message to background script only if context is valid
+function safeSendMessage(message) {
+  try {
+    if (isContextValid()) {
+      chrome.runtime.sendMessage(message);
+    }
+  } catch (err) {
+    if (!err.message.includes('context invalidated')) {
+      console.warn('[GDPR Audit] safeSendMessage error:', err);
+    }
+  }
+}
+
 function takeStorageSnapshot() {
   const snapshot = {
     cookies: {},

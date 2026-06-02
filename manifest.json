@@ -23,7 +23,15 @@
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
-      "js": ["storage-helper.js", "content.js"],
+      "js": [
+        "storage-helper.js",
+        "content-constants.js",
+        "content-dom-utils.js",
+        "content-policy-scanner.js",
+        "content-form-scanner.js",
+        "content-cmp-scanner.js",
+        "content.js"
+      ],
       "run_at": "document_start",
       "all_frames": true,
       "match_about_blank": true,

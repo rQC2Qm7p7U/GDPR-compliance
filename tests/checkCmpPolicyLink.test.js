@@ -12,15 +12,27 @@ global.chrome = {
   }
 };
 
-// Evaluate storage-helper.js first as content.js depends on it
+// Evaluate all content scripts in a combined block so they share the same scope
 const storageHelperCode = fs.readFileSync(path.resolve(__dirname, '../storage-helper.js'), 'utf8');
-eval(storageHelperCode);
+const constantsCode = fs.readFileSync(path.resolve(__dirname, '../content-constants.js'), 'utf8');
+const domUtilsCode = fs.readFileSync(path.resolve(__dirname, '../content-dom-utils.js'), 'utf8');
+const policyScannerCode = fs.readFileSync(path.resolve(__dirname, '../content-policy-scanner.js'), 'utf8');
+const formScannerCode = fs.readFileSync(path.resolve(__dirname, '../content-form-scanner.js'), 'utf8');
+const cmpScannerCode = fs.readFileSync(path.resolve(__dirname, '../content-cmp-scanner.js'), 'utf8');
+const contentCode = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8');
 
-// Evaluate content.js to populate global function definitions
-// Replace 'let lastCmpBannerElement' with 'global.lastCmpBannerElement' to make it globally settable in test
-const contentCode = fs.readFileSync(path.resolve(__dirname, '../content.js'), 'utf8')
+const combinedCode = [
+  storageHelperCode,
+  constantsCode,
+  domUtilsCode,
+  policyScannerCode,
+  formScannerCode,
+  cmpScannerCode,
+  contentCode
+].join('\n')
   .replace('let lastCmpBannerElement = null;', 'global.lastCmpBannerElement = null;');
-eval(contentCode);
+
+eval(combinedCode);
 
 describe('checkCmpPolicyLink test suite', () => {
   beforeEach(() => {
