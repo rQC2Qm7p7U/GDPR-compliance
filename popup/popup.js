@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const checkCookieRejectEl = document.getElementById('check-cookie-reject');
   const checkFormPrecheckedEl = document.getElementById('check-form-prechecked');
   const checkFormLinkEl = document.getElementById('check-form-link');
+  const checkFormMinimizationEl = document.getElementById('check-form-minimization');
   const checkSecurityHttpsEl = document.getElementById('check-security-https');
 
   // Tab Buttons & Panels
@@ -95,11 +96,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         ],
         forms: [
           {
-            id: 'data_minimization',
-            title: 'Data Minimization Rules',
-            desc: 'Input fields only request data strictly necessary to fulfill the request (no bloated signups) (Art. 5).'
-          },
-          {
             id: 'separate_consent',
             title: 'No Bundled Marketing Consent',
             desc: 'Registration/checkout forms do not bundle marketing opt-ins. Marketing consent is separate.'
@@ -158,11 +154,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         ],
         forms: [
-          {
-            id: 'data_minimization',
-            title: 'Purpose Limitation',
-            desc: 'Notice at collection is displayed at or before the point of data entry in any input form.'
-          },
           {
             id: 'separate_consent',
             title: 'Right to Limit Opt-in',
@@ -223,11 +214,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         ],
         forms: [
-          {
-            id: 'data_minimization',
-            title: 'Minimalan obim obrade (čl. 3)',
-            desc: 'Obrađuju se samo podaci koji su neophodni za ostvarivanje namjene obrade.'
-          },
           {
             id: 'separate_consent',
             title: 'Poseban pristanak za marketing',
@@ -301,7 +287,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           setSummaryState('neutral', 'System Tab', 'Extension auditing is not active on system pages.');
           
           detectionInfoEl.textContent = 'Audits not available on system pages.';
-          [checkPolicyExistsEl, checkPolicyFooterEl, checkCookieBlockEl, checkCookieRejectEl, checkFormPrecheckedEl, checkFormLinkEl, checkSecurityHttpsEl].forEach(el => {
+          [checkPolicyExistsEl, checkPolicyFooterEl, checkCookieBlockEl, checkCookieRejectEl, checkFormPrecheckedEl, checkFormLinkEl, checkSecurityHttpsEl, checkFormMinimizationEl].forEach(el => {
             el.textContent = '⏳';
             el.className = 'chk-status status-loading';
           });
@@ -339,7 +325,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       preCheckedCheckboxes: false, 
       hasFormPolicyLink: false, 
       cmpRejectStatus: 'no_cmp',
-      policyDeepScan: null
+      policyDeepScan: null,
+      dataMinimizationStatus: 'passed'
     };
 
     updateUI();
@@ -771,6 +758,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       formLinkDescParagraph.textContent = 'Failed: Forms do not contain a link to the privacy rules.';
     }
 
+    // Form Data Minimization Check
+    const minimizationDescParagraph = checkFormMinimizationEl.nextElementSibling.querySelector('.chk-desc');
+    const minimizationStatus = tabState.dataMinimizationStatus;
+    if (minimizationStatus === 'no_forms') {
+      checkFormMinimizationEl.textContent = '—';
+      checkFormMinimizationEl.className = 'chk-status status-loading';
+      minimizationDescParagraph.textContent = 'N/A: No data submission forms detected.';
+    } else if (minimizationStatus === 'failed') {
+      checkFormMinimizationEl.textContent = '✗';
+      checkFormMinimizationEl.className = 'chk-status status-fail';
+      minimizationDescParagraph.textContent = 'Failed: Subscription form requires a phone number or address.';
+    } else if (minimizationStatus === 'warning') {
+      checkFormMinimizationEl.textContent = '⚠';
+      checkFormMinimizationEl.className = 'chk-status status-warning';
+      minimizationDescParagraph.textContent = 'Warning: Form requests a mandatory physical address or birthdate.';
+    } else {
+      checkFormMinimizationEl.textContent = '✓';
+      checkFormMinimizationEl.className = 'chk-status status-success';
+      minimizationDescParagraph.textContent = 'Passed: Forms do not request excessive mandatory inputs.';
+    }
+
     // 8d. Section 4: Technical Security Check (HTTPS)
     const httpsDescParagraph = checkSecurityHttpsEl.nextElementSibling.querySelector('.chk-desc');
     if (tabState.isHttps) {
@@ -1053,11 +1061,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       grade = "F";
       gradeClass = "grade-f";
       gradeDesc = "Non-Compliant (Critical Failures)";
-    } else if (technicalAudits.cmpRejectButtonStatus === 'missing' || technicalAudits.cmpRejectButtonStatus === 'unequal' || !technicalAudits.privacyPolicyLink) {
+    } else if (technicalAudits.cmpRejectButtonStatus === 'missing' || technicalAudits.cmpRejectButtonStatus === 'unequal' || !technicalAudits.privacyPolicyLink || technicalAudits.dataMinimizationStatus === 'failed') {
       grade = "C";
       gradeClass = "grade-c";
       gradeDesc = "Incomplete Compliance (Warnings)";
-    } else if (!technicalAudits.policyInFooter || technicalAudits.preCheckedCheckboxesStatus === true) {
+    } else if (!technicalAudits.policyInFooter || technicalAudits.preCheckedCheckboxesStatus === true || technicalAudits.dataMinimizationStatus === 'warning') {
       grade = "B";
       gradeClass = "grade-b";
       gradeDesc = "Mostly Compliant (Minor Adjustments Required)";
@@ -1104,7 +1112,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       { name: "Pre-Consent Tracker Block", val: technicalAudits.preConsentBlocked, desc: "Verifies cookies/trackers are blocked before user consent action." },
       { name: "First-layer 'Reject All' Button", val: technicalAudits.cmpRejectButtonStatus === 'detected', desc: "Verifies a Reject/Decline button is directly visible on the banner layer.", warn: technicalAudits.cmpRejectButtonStatus === 'unequal' },
       { name: "Blank Checkbox Inputs (Opt-in)", val: technicalAudits.preCheckedCheckboxesStatus !== true, desc: "Verifies forms contain no pre-checked consent checkboxes." },
-      { name: "Privacy Policy Link in Forms", val: technicalAudits.formPolicyLinkStatus === true, desc: "Checks if submission forms contain a policy link next to submit buttons." }
+      { name: "Privacy Policy Link in Forms", val: technicalAudits.formPolicyLinkStatus === true, desc: "Checks if submission forms contain a policy link next to submit buttons." },
+      { name: "Form Data Minimization", val: technicalAudits.dataMinimizationStatus === 'passed' || technicalAudits.dataMinimizationStatus === 'no_forms', desc: "Verifies subscription/input forms do not request excessive mandatory fields (like phone number).", warn: technicalAudits.dataMinimizationStatus === 'warning' }
     ];
 
     let checksCards = "";
@@ -1255,6 +1264,27 @@ document.addEventListener('DOMContentLoaded', async () => {
           <h5>Remediation Instructions for Webmasters:</h5>
           <ul>
             <li>Place a clear link labeled "Privacy Policy" or "Datenschutz" inside the global site <code>&lt;footer&gt;</code> tag on every single page.</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    if (technicalAudits.dataMinimizationStatus === 'failed' || technicalAudits.dataMinimizationStatus === 'warning') {
+      const isFailed = technicalAudits.dataMinimizationStatus === 'failed';
+      remediationBlocks += `
+        <div class="remediation-card ${isFailed ? 'danger' : 'warning'}">
+          <h4>${isFailed ? '5. Implement Data Minimization (Excessive Mandatory Fields)' : '5. Review Form Fields (Data Minimization Recommendation)'}</h4>
+          <p>${isFailed ? 'The auditor detected that your newsletter or subscription form requires a phone number or physical address, which is excessive and violates GDPR Article 5(1)(c) (Data Minimization).' : 'The auditor detected that your contact or registration form requires a physical address or birthdate, which may be excessive unless strictly necessary for the service.'}</p>
+          <h5>Remediation Instructions for Developers:</h5>
+          <ul>
+            <li><strong>Remove Mandatory Constraint</strong>: Make the excessive fields (like phone, address, birthdate) optional rather than required. Remove the <code>required</code> attribute from the HTML input:
+              <pre><code>&lt;!-- Incorrect: --&gt;
+&lt;input type="tel" name="phone" required&gt;
+
+&lt;!-- Correct: --&gt;
+&lt;input type="tel" name="phone"&gt;</code></pre>
+            </li>
+            <li><strong>Purpose Justification</strong>: If these fields are strictly necessary, document the specific legal basis and commercial purpose in your Privacy Policy.</li>
           </ul>
         </div>
       `;
@@ -2120,7 +2150,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         preConsentBlocked: !tabState.violations.some(v => v.type === 'PRE_CONSENT' || v.type.endsWith('_BYPASS')),
         cmpRejectButtonStatus: tabState.cmpRejectStatus,
         preCheckedCheckboxesStatus: tabState.preCheckedCheckboxes,
-        formPolicyLinkStatus: tabState.hasFormPolicyLink
+        formPolicyLinkStatus: tabState.hasFormPolicyLink,
+        dataMinimizationStatus: tabState.dataMinimizationStatus
       },
       manualChecklist: {
         jurisdiction: jurisdiction,

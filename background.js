@@ -329,7 +329,8 @@ function createDefaultState(url = '', auditMode = 'auto') {
     preCheckedCheckboxes: false,
     hasFormPolicyLink: false,
     cmpRejectStatus: 'no_cmp',
-    policyDeepScan: null
+    policyDeepScan: null,
+    dataMinimizationStatus: 'passed'
   };
 }
 
@@ -635,6 +636,9 @@ async function handleDomScrape(tabId, scrapeData, tabUrl) {
     }
     if (scrapeData.policyDeepScan) {
       state.policyDeepScan = scrapeData.policyDeepScan;
+    }
+    if (scrapeData.dataMinimizationStatus) {
+      state.dataMinimizationStatus = scrapeData.dataMinimizationStatus;
     }
     if (scrapeData.cmpRejectStatus !== 'no_cmp' || state.cmpRejectStatus === 'no_cmp') {
       state.cmpRejectStatus = scrapeData.cmpRejectStatus;

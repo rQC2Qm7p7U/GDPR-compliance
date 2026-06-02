@@ -342,6 +342,80 @@ function checkFormPolicyLink(policyLink) {
   return false;
 }
 
+// ─── Form Data Minimization check ──────────────────────────────────────────
+function getLabelText(input) {
+  let text = '';
+  if (input.id) {
+    const label = document.querySelector(`label[for="${input.id}"]`);
+    if (label) text = label.textContent || '';
+  }
+  if (!text) {
+    const parentLabel = input.closest('label');
+    if (parentLabel) text = parentLabel.textContent || '';
+  }
+  return text;
+}
+
+function checkDataMinimization() {
+  const forms = document.getElementsByTagName('form');
+  if (forms.length === 0) return 'no_forms';
+  
+  let hasMinimizationViolation = 'passed';
+  
+  for (let form of forms) {
+    const formText = (form.textContent || '').toLowerCase();
+    const action = (form.getAttribute('action') || '').toLowerCase();
+    const id = (form.getAttribute('id') || '').toLowerCase();
+    const className = (form.getAttribute('class') || '').toLowerCase();
+    
+    // Detect if it is a newsletter / subscribe / registration / contact form
+    const isNewsletter = formText.includes('newsletter') || formText.includes('subscribe') || formText.includes('abonnieren') || formText.includes('подпис') || className.includes('newsletter') || id.includes('newsletter') || className.includes('subscribe') || id.includes('subscribe') || action.includes('subscribe');
+    const isContact = formText.includes('contact') || formText.includes('kontakt') || formText.includes('get in touch') || formText.includes('anfrage') || className.includes('contact') || id.includes('contact');
+    const isRegistration = formText.includes('register') || formText.includes('sign up') || formText.includes('registrieren') || className.includes('register') || id.includes('register') || className.includes('signup') || id.includes('signup');
+
+    if (isNewsletter || isContact || isRegistration) {
+      let collectsEmail = false;
+      let hasRequiredPhone = false;
+      let hasRequiredAddress = false;
+      let hasRequiredBirthdate = false;
+      
+      const inputs = form.querySelectorAll('input, select');
+      inputs.forEach(input => {
+        const type = (input.getAttribute('type') || '').toLowerCase();
+        const name = (input.getAttribute('name') || '').toLowerCase();
+        const idAttr = (input.getAttribute('id') || '').toLowerCase();
+        const placeholder = (input.getAttribute('placeholder') || '').toLowerCase();
+        const labelText = getLabelText(input).toLowerCase();
+        
+        const isEmail = type === 'email' || name.includes('email') || idAttr.includes('email') || placeholder.includes('email') || placeholder.includes('почт') || labelText.includes('email') || labelText.includes('почт');
+        const isPhone = type === 'tel' || name.includes('phone') || name.includes('tel') || name.includes('mobil') || idAttr.includes('phone') || idAttr.includes('tel') || placeholder.includes('phone') || placeholder.includes('tel') || placeholder.includes('телефон') || labelText.includes('phone') || labelText.includes('tel') || labelText.includes('телефон');
+        const isAddress = name.includes('address') || name.includes('street') || name.includes('zip') || name.includes('city') || idAttr.includes('address') || idAttr.includes('street') || placeholder.includes('address') || labelText.includes('address') || labelText.includes('strasse') || labelText.includes('straße') || labelText.includes('адрес');
+        const isBirthdate = type === 'date' || name.includes('birth') || name.includes('dob') || idAttr.includes('birth') || labelText.includes('birth') || labelText.includes('geburtstag') || labelText.includes('дата рожд');
+        
+        if (isEmail) collectsEmail = true;
+        
+        const isRequired = input.hasAttribute('required') || input.getAttribute('aria-required') === 'true';
+        if (isRequired) {
+          if (isPhone) hasRequiredPhone = true;
+          if (isAddress) hasRequiredAddress = true;
+          if (isBirthdate) hasRequiredBirthdate = true;
+        }
+      });
+      
+      // Violations
+      if (isNewsletter && collectsEmail && (hasRequiredPhone || hasRequiredAddress || hasRequiredBirthdate)) {
+        hasMinimizationViolation = 'failed';
+        break;
+      }
+      if ((isContact || isRegistration) && collectsEmail && (hasRequiredAddress || hasRequiredBirthdate)) {
+        hasMinimizationViolation = 'warning';
+      }
+    }
+  }
+  
+  return hasMinimizationViolation;
+}
+
 // ─── Shadow DOM aware element search ─────────────────────────────────────
 function querySelectorDeep(selector, root) {
   root = root || document;
@@ -807,6 +881,7 @@ function sendDOMData() {
     hasFormPolicyLink,
     cmpRejectStatus,
     policyDeepScan: currentPolicyScan,
+    dataMinimizationStatus: checkDataMinimization(),
     isTopFrame: window === window.top
   });
 }
