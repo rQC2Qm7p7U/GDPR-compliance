@@ -1113,7 +1113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <td>${idx + 1}</td>
             <td><span class="tracker-tag">${escapeHtml(v.trackerName)}</span></td>
             <td><span class="violation-badge ${badgeClass}">${badgeLabel}</span></td>
-            <td class="url-cell" title="${escapeHtml(v.url)}">${escapeHtml(v.url)}</td>
+            <td class="url-cell"><div class="url-text" title="${escapeHtml(v.url)}">${escapeHtml(v.url)}</div></td>
             <td>${escapeHtml(v.initiator)}</td>
             <td>${new Date(v.timestamp).toLocaleTimeString()}</td>
           </tr>
@@ -1129,7 +1129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
     }
 
-    // Generate automated checklist rows
+    // Generate automated checklist cards
     const checks = [
       { name: "HTTPS Security Protocol", val: technicalAudits.isHttpsSecure, desc: "Verifies the website uses SSL/TLS encryption." },
       { name: "Privacy Policy Link Detected", val: !!technicalAudits.privacyPolicyLink, desc: `Checks for a visible privacy policy link matching ${resolvedJurisdiction} keywords.` },
@@ -1140,34 +1140,52 @@ document.addEventListener('DOMContentLoaded', async () => {
       { name: "Privacy Policy Link in Forms", val: technicalAudits.formPolicyLinkStatus === true, desc: "Checks if submission forms contain a policy link next to submit buttons." }
     ];
 
-    let checksRows = "";
+    let checksCards = "";
     checks.forEach(c => {
-      let statusBadge = "";
+      let statusClass = "";
+      let statusText = "";
+      let statusIcon = "";
+      
       if (c.val === true || (c.name.includes("Checkbox") && c.val)) {
-        statusBadge = '<span class="status-indicator pass">PASS</span>';
+        statusClass = "pass";
+        statusText = "PASS";
+        statusIcon = `<svg class="status-svg success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
       } else if (c.warn) {
-        statusBadge = '<span class="status-indicator warn">WARNING</span>';
+        statusClass = "warn";
+        statusText = "WARNING";
+        statusIcon = `<svg class="status-svg warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
       } else {
-        statusBadge = '<span class="status-indicator fail">FAIL</span>';
+        statusClass = "fail";
+        statusText = "FAIL";
+        statusIcon = `<svg class="status-svg danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
       }
-      checksRows += `
-        <tr>
-          <td><strong>${c.name}</strong><br><small class="text-muted">${c.desc}</small></td>
-          <td class="text-center">${statusBadge}</td>
-        </tr>
+      
+      checksCards += `
+        <div class="checklist-card ${statusClass}">
+          <div class="card-status-icon">${statusIcon}</div>
+          <div class="card-info">
+            <div class="card-header-row">
+              <span class="card-title">${escapeHtml(c.name)}</span>
+              <span class="card-badge-status ${statusClass}">${statusText}</span>
+            </div>
+            <p class="card-desc">${escapeHtml(c.desc)}</p>
+          </div>
+        </div>
       `;
     });
 
-    // Manual reviews rows
-    let manualRows = "";
+    // Manual reviews cards
+    let manualCards = "";
     if (manualChecklist && manualChecklist.selections) {
       const keys = Object.keys(manualChecklist.selections);
       if (keys.length > 0) {
         keys.forEach(k => {
           const checked = manualChecklist.selections[k];
-          const statusBadge = checked 
-            ? '<span class="status-indicator pass">COMPLIANT</span>' 
-            : '<span class="status-indicator fail">UNVERIFIED</span>';
+          const statusClass = checked ? "pass" : "fail";
+          const statusText = checked ? "VERIFIED" : "UNVERIFIED";
+          const statusIcon = checked 
+            ? `<svg class="status-svg success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`
+            : `<svg class="status-svg silent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
           
           let title = k.replace(/_/g, ' ');
           title = title.charAt(0).toUpperCase() + title.slice(1);
@@ -1185,14 +1203,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
 
-          manualRows += `
-            <tr>
-              <td><strong>${title}</strong><br><small class="text-muted">${desc}</small></td>
-              <td class="text-center">${statusBadge}</td>
-            </tr>
+          manualCards += `
+            <div class="checklist-card ${statusClass}">
+              <div class="card-status-icon">${statusIcon}</div>
+              <div class="card-info">
+                <div class="card-header-row">
+                  <span class="card-title">${escapeHtml(title)}</span>
+                  <span class="card-badge-status ${statusClass}">${statusText}</span>
+                </div>
+                <p class="card-desc">${escapeHtml(desc)}</p>
+              </div>
+            </div>
           `;
         });
       }
+    }
+
+    if (!manualCards) {
+      manualCards = `<div class="empty-state">No manual checklist verification items recorded.</div>`;
     }
 
     // Developer Remediation Guidelines Block
@@ -1206,11 +1234,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           <ul>
             <li><strong>GTM Consent Mode</strong>: Enable Tag Manager "Consent Settings". Do not fire Google Analytics, Facebook Pixel, or TikTok tags until <code>analytics_storage</code> or <code>ad_storage</code> is granted.</li>
             <li><strong>Script Tag Wrapping</strong>: Modify direct script tags on the page to prevent automatic load:
-              <pre><code>&lt;!-- Change this: --&gt;
-&lt;script src="https://example-tracker.com/pixel.js"&gt;&lt;/script&gt;
+              <pre><code><span class="comment">&lt;!-- Change this: --&gt;</span>
+&lt;<span class="tag">script</span> <span class="attr">src</span>=<span class="val">"https://example-tracker.com/pixel.js"</span>&gt;&lt;/<span class="tag">script</span>&gt;
 
-&lt;!-- To this (CMP wrapper style): --&gt;
-&lt;script type="text/plain" class="_cm_script" data-consent="marketing" src="https://example-tracker.com/pixel.js"&gt;&lt;/script&gt;</code></pre>
+<span class="comment">&lt;!-- To this (CMP wrapper style): --&gt;</span>
+&lt;<span class="tag">script</span> <span class="attr">type</span>=<span class="val">"text/plain"</span> <span class="attr">class</span>=<span class="val">"_cm_script"</span> <span class="attr">data-consent</span>=<span class="val">"marketing"</span> <span class="attr">src</span>=<span class="val">"https://example-tracker.com/pixel.js"</span>&gt;&lt;/<span class="tag">script</span>&gt;</code></pre>
             </li>
             <li><strong>Server-side Cookies</strong>: Ensure server-side set-cookie headers (like <code>IDE</code>, <code>_fbp</code>, <code>_ga</code>) are not sent on initial load before the user makes a choice.</li>
           </ul>
@@ -1241,11 +1269,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           <h5>Remediation Instructions for Developers:</h5>
           <ul>
             <li><strong>HTML Checkboxes</strong>: Ensure all checkbox inputs have the <code>checked</code> attribute removed from their HTML:
-              <pre><code>&lt;!-- Incorrect: --&gt;
-&lt;input type="checkbox" name="marketing" checked&gt;
+              <pre><code><span class="comment">&lt;!-- Incorrect: --&gt;</span>
+&lt;<span class="tag">input</span> <span class="attr">type</span>=<span class="val">"checkbox"</span> <span class="attr">name</span>=<span class="val">"marketing"</span> <span class="attr">checked</span>&gt;
 
-&lt;!-- Correct: --&gt;
-&lt;input type="checkbox" name="marketing"&gt;</code></pre>
+<span class="comment">&lt;!-- Correct: --&gt;</span>
+&lt;<span class="tag">input</span> <span class="attr">type</span>=<span class="val">"checkbox"</span> <span class="attr">name</span>=<span class="val">"marketing"</span>&gt;</code></pre>
             </li>
           </ul>
         </div>
@@ -1288,16 +1316,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     :root {
       --color-primary: #0f172a;
       --color-primary-light: #1e293b;
-      --color-accent: #38bdf8;
+      --color-accent: #4f46e5;
+      --color-accent-light: #818cf8;
       --color-success: #10b981;
       --color-success-bg: #ecfdf5;
+      --color-success-border: #a7f3d0;
       --color-danger: #ef4444;
       --color-danger-bg: #fef2f2;
+      --color-danger-border: #fca5a5;
       --color-warning: #f59e0b;
       --color-warning-bg: #fffbeb;
+      --color-warning-border: #fde68a;
       --color-gray-bg: #f8fafc;
       --color-border: #e2e8f0;
-      --color-text: #334155;
+      --color-text: #475569;
       --color-text-dark: #0f172a;
       --color-text-light: #64748b;
     }
@@ -1311,69 +1343,153 @@ document.addEventListener('DOMContentLoaded', async () => {
     body {
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: var(--color-text);
-      background-color: #f1f5f9;
+      background-color: #f8fafc;
       line-height: 1.6;
-      padding: 40px 20px;
+      padding: 84px 20px 80px 20px;
     }
 
+    /* Floating Action Bar */
+    .action-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      z-index: 100;
+      box-shadow: 0 1px 3px 0 rgba(0,0,0,0.05);
+    }
+
+    .action-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .action-bar-left h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--color-text-dark);
+    }
+
+    .action-bar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-print {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background-color: var(--color-accent);
+      color: #ffffff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px 0 rgba(79, 70, 229, 0.2);
+    }
+
+    .btn-print:hover {
+      background-color: #4338ca;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px 0 rgba(79, 70, 229, 0.3);
+    }
+
+    .btn-print:active {
+      transform: translateY(0);
+    }
+
+    .btn-print svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Main Container */
     .report-container {
-      max-width: 900px;
-      margin: 0 auto;
+      max-width: 1000px;
+      margin: 20px auto 0 auto;
       background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08);
       border: 1px solid var(--color-border);
       overflow: hidden;
     }
 
+    /* Header styling */
     header.report-header {
-      background: var(--color-primary);
+      background: linear-gradient(135deg, #0f172a, #1e1b4b);
       color: #ffffff;
-      padding: 40px;
-      border-bottom: 4px solid var(--color-accent);
+      padding: 48px 48px 40px 48px;
+      border-bottom: 5px solid var(--color-accent);
       position: relative;
+    }
+
+    header.report-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background-image: radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 60%);
+      pointer-events: none;
     }
 
     .header-logo {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 15px;
+      gap: 12px;
+      margin-bottom: 20px;
     }
 
     .header-logo svg {
-      width: 32px;
-      height: 32px;
-      color: var(--color-accent);
+      width: 36px;
+      height: 36px;
+      color: #818cf8;
+      filter: drop-shadow(0 2px 8px rgba(129, 140, 248, 0.4));
     }
 
     .header-logo span {
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 800;
       letter-spacing: -0.5px;
     }
 
     .header-logo span span {
-      color: var(--color-accent);
+      color: #818cf8;
     }
 
     .report-title {
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 5px;
-      letter-spacing: -0.5px;
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.8px;
+      color: #ffffff;
     }
 
     .report-subtitle {
-      font-size: 14px;
-      color: var(--color-text-light);
+      font-size: 15px;
+      color: #94a3b8;
     }
 
+    /* Meta Grid */
     .meta-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      padding: 30px 40px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 24px;
+      padding: 32px 48px;
       background: var(--color-gray-bg);
       border-bottom: 1px solid var(--color-border);
     }
@@ -1381,19 +1497,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     .meta-item {
       display: flex;
       flex-direction: column;
+      gap: 6px;
     }
 
     .meta-label {
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
       color: var(--color-text-light);
-      margin-bottom: 4px;
     }
 
     .meta-value {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 600;
       color: var(--color-text-dark);
     }
@@ -1407,66 +1523,69 @@ document.addEventListener('DOMContentLoaded', async () => {
       font-weight: 700;
     }
 
-    .grade-a { background-color: var(--color-success-bg); color: var(--color-success); border: 1px solid #a7f3d0; }
-    .grade-b { background-color: var(--color-success-bg); color: var(--color-success); border: 1px solid #a7f3d0; }
-    .grade-c { background-color: var(--color-warning-bg); color: var(--color-warning); border: 1px solid #fde68a; }
-    .grade-f { background-color: var(--color-danger-bg); color: var(--color-danger); border: 1px solid #fca5a5; }
+    .grade-a { background-color: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
+    .grade-b { background-color: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
+    .grade-c { background-color: var(--color-warning-bg); color: var(--color-warning); border: 1px solid var(--color-warning-border); }
+    .grade-f { background-color: var(--color-danger-bg); color: var(--color-danger); border: 1px solid var(--color-danger-border); }
 
+    /* Body Container */
     .report-body {
-      padding: 40px;
+      padding: 48px;
     }
 
     section.report-section {
-      margin-bottom: 40px;
+      margin-bottom: 48px;
     }
 
     section.report-section h3 {
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 22px;
+      font-weight: 800;
       color: var(--color-text-dark);
-      margin-bottom: 20px;
+      margin-bottom: 24px;
       border-left: 4px solid var(--color-accent);
-      padding-left: 12px;
-      letter-spacing: -0.3px;
+      padding-left: 14px;
+      letter-spacing: -0.5px;
     }
 
     /* Overall Grade Block */
     .status-summary-block {
       display: flex;
       align-items: center;
-      gap: 30px;
-      padding: 30px;
-      border-radius: 8px;
-      margin-bottom: 35px;
+      gap: 32px;
+      padding: 36px;
+      border-radius: 12px;
+      margin-bottom: 40px;
+      border-width: 1px;
+      border-style: solid;
     }
 
     .status-summary-block.block-a, .status-summary-block.block-b {
       background-color: var(--color-success-bg);
-      border: 1px solid #a7f3d0;
+      border-color: var(--color-success-border);
     }
 
     .status-summary-block.block-c {
       background-color: var(--color-warning-bg);
-      border: 1px solid #fde68a;
+      border-color: var(--color-warning-border);
     }
 
     .status-summary-block.block-f {
       background-color: var(--color-danger-bg);
-      border: 1px solid #fca5a5;
+      border-color: var(--color-danger-border);
     }
 
     .grade-big-circle {
-      width: 80px;
-      height: 80px;
+      width: 90px;
+      height: 90px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 38px;
+      font-size: 42px;
       font-weight: 800;
       flex-shrink: 0;
       border: 4px solid #ffffff;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
     }
 
     .block-a .grade-big-circle, .block-b .grade-big-circle { background-color: var(--color-success); color: #ffffff; }
@@ -1474,98 +1593,123 @@ document.addEventListener('DOMContentLoaded', async () => {
     .block-f .grade-big-circle { background-color: var(--color-danger); color: #ffffff; }
 
     .status-text h4 {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 800;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       color: var(--color-text-dark);
+      letter-spacing: -0.5px;
     }
 
     .status-text p {
-      font-size: 14px;
+      font-size: 15px;
       color: var(--color-text);
+      line-height: 1.6;
     }
 
-    /* Tables */
-    table.data-table {
-      width: 100%;
-      border-collapse: collapse;
+    /* Checklist Card Layout */
+    .checklist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 20px;
       margin-bottom: 10px;
-      font-size: 14px;
     }
 
-    table.data-table th {
-      background-color: var(--color-gray-bg);
-      color: var(--color-text-dark);
+    .checklist-card {
+      display: flex;
+      gap: 16px;
+      padding: 20px;
+      background: #ffffff;
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .checklist-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px -4px rgba(15, 23, 42, 0.06);
+      border-color: #cbd5e1;
+    }
+
+    .checklist-card.pass { border-left: 4px solid var(--color-success); }
+    .checklist-card.warn { border-left: 4px solid var(--color-warning); }
+    .checklist-card.fail { border-left: 4px solid var(--color-danger); }
+
+    .card-status-icon {
+      flex-shrink: 0;
+    }
+
+    .status-svg {
+      width: 24px;
+      height: 24px;
+    }
+    
+    .status-svg.success { color: var(--color-success); }
+    .status-svg.warning { color: var(--color-warning); }
+    .status-svg.danger { color: var(--color-danger); }
+    .status-svg.silent { color: var(--color-text-light); }
+
+    .card-info {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .card-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 2px;
+    }
+
+    .card-title {
+      font-size: 15px;
       font-weight: 700;
-      text-align: left;
-      padding: 12px 16px;
-      border-bottom: 2px solid var(--color-border);
-      font-size: 12px;
+      color: var(--color-text-dark);
+      line-height: 1.3;
+    }
+
+    .card-badge-status {
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
-    table.data-table td {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--color-border);
-      color: var(--color-text);
-      vertical-align: middle;
+    .card-badge-status.pass { background-color: var(--color-success-bg); color: var(--color-success); }
+    .card-badge-status.warn { background-color: var(--color-warning-bg); color: var(--color-warning); }
+    .card-badge-status.fail { background-color: var(--color-danger-bg); color: var(--color-danger); }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--color-text-light);
+      line-height: 1.4;
     }
 
-    table.data-table tr:hover {
-      background-color: #f8fafc80;
-    }
-
-    .url-cell {
-      word-break: break-all;
-      max-width: 300px;
-      font-family: monospace;
-      font-size: 12px;
-      color: #0f172a;
-    }
-
-    .tracker-tag {
-      font-weight: 600;
-      color: var(--color-text-dark);
-      background-color: var(--color-gray-bg);
-      border: 1px solid var(--color-border);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-      display: inline-block;
-    }
-
-    .violation-badge {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .badge-danger { background-color: var(--color-danger-bg); color: var(--color-danger); border: 1px solid #fecaca; }
-
-    .status-indicator {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 700;
+    .empty-state {
+      grid-column: 1 / -1;
       text-align: center;
-      min-width: 70px;
+      padding: 32px;
+      color: var(--color-text-light);
+      background-color: var(--color-gray-bg);
+      border: 1px dashed var(--color-border);
+      border-radius: 8px;
+      font-style: italic;
+      font-size: 14px;
     }
 
-    .status-indicator.pass { background-color: var(--color-success-bg); color: var(--color-success); border: 1px solid #a7f3d0; }
-    .status-indicator.warn { background-color: var(--color-warning-bg); color: var(--color-warning); border: 1px solid #fde68a; }
-    .status-indicator.fail { background-color: var(--color-danger-bg); color: var(--color-danger); border: 1px solid #fca5a5; }
-
-    /* Remediation Section */
+    /* Remediation Cards */
     .remediation-card {
-      padding: 24px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      border-left: 5px solid;
+      padding: 28px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      border-left: 6px solid;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
     }
 
     .remediation-card.danger {
@@ -1574,7 +1718,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       color: #7f1d1d;
     }
 
-    .remediation-card.danger h4 { color: #991b1b; margin-bottom: 8px; }
+    .remediation-card.danger h4 { color: #991b1b; margin-bottom: 12px; font-size: 18px; font-weight: 700; }
 
     .remediation-card.warning {
       background-color: var(--color-warning-bg);
@@ -1582,7 +1726,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       color: #78350f;
     }
 
-    .remediation-card.warning h4 { color: #92400e; margin-bottom: 8px; }
+    .remediation-card.warning h4 { color: #92400e; margin-bottom: 12px; font-size: 18px; font-weight: 700; }
 
     .remediation-card.success {
       background-color: var(--color-success-bg);
@@ -1590,41 +1734,166 @@ document.addEventListener('DOMContentLoaded', async () => {
       color: #064e3b;
     }
 
-    .remediation-card.success h4 { color: #065f46; margin-bottom: 8px; }
+    .remediation-card.success h4 { color: #065f46; margin-bottom: 12px; font-size: 18px; font-weight: 700; }
 
     .remediation-card p {
-      font-size: 14px;
-      margin-bottom: 15px;
+      font-size: 14.5px;
+      margin-bottom: 16px;
+      line-height: 1.6;
     }
 
     .remediation-card h5 {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .remediation-card ul {
-      margin-left: 20px;
+      margin-left: 24px;
       font-size: 14px;
-      margin-bottom: 15px;
+      margin-bottom: 16px;
     }
 
     .remediation-card li {
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+      line-height: 1.5;
     }
 
     .remediation-card pre {
-      background-color: rgba(15, 23, 42, 0.05);
+      background-color: rgba(15, 23, 42, 0.06);
       border: 1px solid rgba(15, 23, 42, 0.1);
-      padding: 12px;
-      border-radius: 6px;
-      font-family: monospace;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'SFMono-Regular', Consolas, "Liberation Mono", Menlo, Courier, monospace;
       font-size: 12px;
       overflow-x: auto;
-      margin-top: 6px;
+      margin-top: 10px;
       color: #0f172a;
+      line-height: 1.5;
+    }
+
+    .remediation-card pre code {
+      font-family: inherit;
+      color: inherit;
+    }
+    
+    .remediation-card pre .comment {
+      color: #64748b;
+      font-style: italic;
+    }
+    
+    .remediation-card pre .tag {
+      color: #2563eb;
+      font-weight: 600;
+    }
+
+    .remediation-card pre .attr {
+      color: #b45309;
+    }
+
+    .remediation-card pre .val {
+      color: #059669;
+    }
+
+    /* Tables */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--color-border);
+      border-radius: 10px;
+      background: #ffffff;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.01);
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    table.data-table th {
+      background-color: var(--color-gray-bg);
+      color: var(--color-text-dark);
+      font-weight: 700;
+      text-align: left;
+      padding: 14px 20px;
+      border-bottom: 2px solid var(--color-border);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    table.data-table td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+      vertical-align: middle;
+    }
+
+    table.data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    table.data-table tr:hover {
+      background-color: #f8fafc80;
+    }
+
+    .url-cell {
+      max-width: 280px;
+    }
+
+    .url-text {
+      display: block;
+      font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
+      font-size: 11px;
+      background-color: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 5px 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      color: #1e293b;
+      max-width: 100%;
+    }
+
+    .url-text::-webkit-scrollbar {
+      height: 3px;
+    }
+
+    .url-text::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 1.5px;
+    }
+
+    .tracker-tag {
+      font-weight: 600;
+      color: var(--color-text-dark);
+      background-color: #f1f5f9;
+      border: 1px solid var(--color-border);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      display: inline-block;
+    }
+
+    .violation-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid;
+    }
+
+    .badge-danger { 
+      background-color: var(--color-danger-bg); 
+      color: var(--color-danger); 
+      border-color: var(--color-danger-border); 
     }
 
     /* Print styles */
@@ -1633,12 +1902,87 @@ document.addEventListener('DOMContentLoaded', async () => {
         background-color: #ffffff;
         padding: 0;
       }
+      .no-print {
+        display: none !important;
+      }
       .report-container {
         box-shadow: none;
         border: none;
+        margin: 0;
+      }
+      header.report-header {
+        padding: 20px 0;
+        background: #ffffff !important;
+        color: #000000 !important;
+        border-bottom: 2px solid #000000;
+      }
+      header.report-header::before {
+        display: none;
+      }
+      .header-logo svg {
+        color: #000000 !important;
+      }
+      .header-logo span, .report-title, .report-subtitle {
+        color: #000000 !important;
+      }
+      .meta-grid {
+        background: #ffffff !important;
+        padding: 20px 0;
+        border-bottom: 1px solid #000000;
+      }
+      .meta-value {
+        color: #000000 !important;
+      }
+      .report-body {
+        padding: 20px 0;
+      }
+      .status-summary-block {
+        background: #ffffff !important;
+        border: 1px solid #000000 !important;
+        page-break-inside: avoid;
+      }
+      .grade-big-circle {
+        border-color: #000000 !important;
+        color: #000000 !important;
+        background: #ffffff !important;
+      }
+      .block-a .grade-big-circle, .block-b .grade-big-circle,
+      .block-c .grade-big-circle, .block-f .grade-big-circle {
+        background: #ffffff !important;
+        color: #000000 !important;
       }
       .remediation-card {
+        background: #ffffff !important;
+        border: 1px solid #000000 !important;
+        border-left: 6px solid #000000 !important;
+        color: #000000 !important;
         page-break-inside: avoid;
+      }
+      .remediation-card h4, .remediation-card p, .remediation-card h5, .remediation-card pre {
+        color: #000000 !important;
+      }
+      .remediation-card pre {
+        background: #ffffff !important;
+        border: 1px solid #000000 !important;
+      }
+      .checklist-card {
+        border: 1px solid #000000 !important;
+        background: #ffffff !important;
+        page-break-inside: avoid;
+      }
+      .checklist-card.pass { border-left: 4px solid #000000 !important; }
+      .checklist-card.warn { border-left: 4px solid #000000 !important; }
+      .checklist-card.fail { border-left: 4px solid #000000 !important; }
+      .card-badge-status.pass, .card-badge-status.warn, .card-badge-status.fail {
+        border: 1px solid #000000 !important;
+        color: #000000 !important;
+        background: #ffffff !important;
+      }
+      .url-text {
+        background: #ffffff !important;
+        border: 1px solid #000000 !important;
+        white-space: normal !important;
+        word-break: break-all !important;
       }
       table {
         page-break-inside: auto;
@@ -1651,6 +1995,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   </style>
 </head>
 <body>
+
+  <!-- Floating Action Bar (Sticky, hides during print) -->
+  <div class="action-bar no-print">
+    <div class="action-bar-left">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22C12 22 20 18 20 12V5L12 2L4 5V12C4 12 4 18 12 22Z"/>
+      </svg>
+      <h2>Privacy compliance Report</h2>
+    </div>
+    <div class="action-bar-right">
+      <button onclick="window.print()" class="btn-print">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        Print / Save PDF
+      </button>
+    </div>
+  </div>
 
   <div class="report-container">
     
@@ -1713,53 +2077,39 @@ document.addEventListener('DOMContentLoaded', async () => {
       <!-- Violations List -->
       <section class="report-section">
         <h3>Audited Tracker Violations Log (${violationsCount})</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th style="width: 5%">#</th>
-              <th style="width: 25%">Tracker System</th>
-              <th style="width: 15%">Violation Context</th>
-              <th style="width: 30%">Request Target</th>
-              <th style="width: 15%">Originator</th>
-              <th style="width: 10%">Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${violationsRows}
-          </tbody>
-        </table>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 5%">#</th>
+                <th style="width: 25%">Tracker System</th>
+                <th style="width: 15%">Violation Context</th>
+                <th style="width: 30%">Request Target</th>
+                <th style="width: 15%">Originator</th>
+                <th style="width: 10%">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${violationsRows}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <!-- Automated Audit Checklist -->
       <section class="report-section">
         <h3>Automated Scanner Checklist</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th style="width: 80%">Evaluated Requirement</th>
-              <th style="width: 20%; text-align: center;">Scan Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${checksRows}
-          </tbody>
-        </table>
+        <div class="checklist-grid">
+          ${checksCards}
+        </div>
       </section>
 
       <!-- Manual Checklist Status -->
       <section class="report-section">
         <h3>Manual Checklist Review</h3>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th style="width: 80%">Requirement Description</th>
-              <th style="width: 20%; text-align: center;">Review State</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${manualRows || '<tr><td colspan="2" class="text-center text-muted">No manual checklist verification items recorded.</td></tr>'}
-          </tbody>
-        </table>
+        <div class="checklist-grid">
+          ${manualCards}
+        </div>
       </section>
 
     </div>

@@ -1,6 +1,6 @@
 {
   "name": "GDPR/CCPA Cookie Consent Auditor",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "manifest_version": 3,
   "description": "Audits websites for privacy compliance by checking if tracking scripts load before or after consent rejection.",
   "permissions": [
