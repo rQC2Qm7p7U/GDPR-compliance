@@ -470,8 +470,13 @@ async function processRequest(details) {
   }
 }
 
-// Audit cookies on tab load complete
+// Reset tab state on navigation/reload, and audit cookies on complete
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'loading') {
+    clearTabState(tabId);
+    const key = `tab_${tabId}`;
+    chrome.storage.session.remove(key).catch(() => {});
+  }
   if (changeInfo.status === 'complete' && tab.url) {
     auditCookies(tabId, tab.url);
   }

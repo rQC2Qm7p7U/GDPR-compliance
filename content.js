@@ -314,10 +314,27 @@ function checkPolicyInFooter(policyLink) {
 
 // ─── Detect data collection forms (filter out simple searches) ───────────
 function isDataCollectionForm(form) {
-  const formText = (form.textContent || '').toLowerCase();
   const action = (form.getAttribute('action') || '').toLowerCase();
   const id = (form.getAttribute('id') || '').toLowerCase();
   const className = (form.getAttribute('class') || '').toLowerCase();
+  const role = (form.getAttribute('role') || '').toLowerCase();
+
+  // 1. Identify search/filter forms and exclude them from privacy policy requirements
+  const isSearchForm = role === 'search' || 
+                       action.includes('search') || action.includes('suche') || action.includes('find') ||
+                       id.includes('search') || id.includes('suche') ||
+                       className.includes('search') || className.includes('suche') ||
+                       className.includes('filter');
+
+  if (isSearchForm) {
+    // Search/filter forms don't require privacy consent links unless they contain email/password fields
+    const hasEmailOrPass = form.querySelector('input[type="email"], input[type="password"], input[name*="email" i], input[name*="pass" i], input[id*="email" i], input[id*="pass" i]');
+    if (!hasEmailOrPass) {
+      return false;
+    }
+  }
+
+  const formText = (form.textContent || '').toLowerCase();
   
   const isNewsletter = formText.includes('newsletter') || formText.includes('subscribe') || formText.includes('abonnieren') || formText.includes('подпис') || className.includes('newsletter') || id.includes('newsletter') || className.includes('subscribe') || id.includes('subscribe') || action.includes('subscribe');
   const isContact = formText.includes('contact') || formText.includes('kontakt') || formText.includes('get in touch') || formText.includes('anfrage') || className.includes('contact') || id.includes('contact') || formText.includes('feedback');
@@ -339,9 +356,8 @@ function isDataCollectionForm(form) {
     const isPhone = type === 'tel' || name.includes('phone') || name.includes('tel') || idAttr.includes('phone');
     const isAddress = name.includes('address') || name.includes('street') || name.includes('zip') || name.includes('city') || idAttr.includes('address');
     const isPassword = type === 'password' || name.includes('pass') || idAttr.includes('pass');
-    const isCheckbox = type === 'checkbox';
 
-    if (isEmail || isPhone || isAddress || isPassword || isCheckbox) {
+    if (isEmail || isPhone || isAddress || isPassword) {
       hasPersonalInput = true;
     }
   });
@@ -602,12 +618,18 @@ function scanCmpBanner() {
       const allElements = querySelectorAllDeep('*', document);
       
       for (let el of allElements) {
-        if (!el || el === document.body || el === document.documentElement || el.tagName === 'HTML' || el.tagName === 'BODY') {
+        if (!el || el === document.body || el === document.documentElement) {
+          continue;
+        }
+        
+        const tagName = el.tagName.toUpperCase();
+        // Skip document structures and non-interactive formatting/script elements
+        const IGNORED_BANNER_TAGS = ['HTML', 'BODY', 'MAIN', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'NAV', 'ASIDE', 'FORM', 'SCRIPT', 'STYLE', 'IFRAME', 'NOSCRIPT', 'HEAD', 'META', 'LINK'];
+        if (IGNORED_BANNER_TAGS.includes(tagName)) {
           continue;
         }
         
         let cheapScore = 0;
-        const tagName = el.tagName.toUpperCase();
         const role = el.getAttribute('role') || '';
         const id = el.id || '';
         const className = typeof el.className === 'string' ? el.className : '';
@@ -721,7 +743,7 @@ function scanCmpBanner() {
             }
             
             const finalScore = cheapScore + computedScore;
-            if (finalScore >= 8 && finalScore > maxScore) {
+            if (finalScore >= 14 && finalScore > maxScore) {
               maxScore = finalScore;
               bestCandidate = el;
             }
@@ -746,8 +768,7 @@ function scanCmpBanner() {
                        window.location.href.includes('cookielaw') ||
                        window.location.href.includes('sp-cloud') ||
                        window.location.href.includes('consent.') ||
-                       window.location.href.includes('cmp.') ||
-                       window.self !== window.top; // inside iframe
+                       window.location.href.includes('cmp.');
     if (isCmpFrame && document.body) {
       banner = document.body;
     }

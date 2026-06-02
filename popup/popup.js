@@ -2271,7 +2271,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           preCheckedCheckboxes: false, 
           hasFormPolicyLink: false, 
           cmpRejectStatus: 'no_cmp',
-          policyDeepScan: null
+          policyDeepScan: null,
+          dataMinimizationStatus: 'passed',
+          cmpPolicyLinkDetected: 'no_cmp'
         };
         updateUI();
       }
