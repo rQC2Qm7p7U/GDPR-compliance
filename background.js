@@ -579,42 +579,100 @@ async function updateBadge(tabId, count) {
   }
 }
 
+// Helper for security audit: validate and sanitize incoming URL strings
+function isValidUrl(str) {
+  if (!str || typeof str !== 'string' || str.length > 2048) return false;
+  try {
+    const parsed = new URL(str);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch (e) {
+    return str.startsWith('/') || str.startsWith('./') || str.startsWith('../');
+  }
+}
+
+// Helper for security audit: sanitize strings to prevent injections
+function sanitizeString(str, maxLength = 256) {
+  if (typeof str !== 'string') return '';
+  let cleaned = str.replace(/[\x00-\x1F\x7F]/g, '').trim();
+  if (cleaned.length > maxLength) {
+    cleaned = cleaned.substring(0, maxLength);
+  }
+  return cleaned;
+}
+
 // Listen for CMP and DOM scraper messages
 chrome.runtime.onMessage.addListener((message, sender) => {
+  if (!message || typeof message !== 'object') return;
+
   if (message.type === 'CMP_STATUS_CHANGE') {
     const tabId = sender.tab && sender.tab.id;
-    if (tabId) {
-      handleConsentUpdate(tabId, message.status, message.source, sender.tab.url, message.eventStatus);
+    const tabUrl = sender.tab && sender.tab.url;
+    
+    // Strict whitelist verification for consent status
+    const validStatuses = ['unknown', 'accepted', 'rejected', 'not_applicable'];
+    const status = sanitizeString(message.status, 50);
+    const source = sanitizeString(message.source, 100);
+    const eventStatus = sanitizeString(message.eventStatus, 100);
+    
+    if (tabId && validStatuses.includes(status)) {
+      handleConsentUpdate(tabId, status, source, tabUrl || '', eventStatus);
     }
   } else if (message.type === 'DOM_SCRAPE_RESULTS') {
     const tabId = sender.tab && sender.tab.id;
-    if (tabId) {
-      handleDomScrape(tabId, message, sender.tab.url);
-    }
+    const tabUrl = sender.tab && sender.tab.url;
+    if (!tabId) return;
+
+    // Validate and sanitize DOM scraping payloads
+    const sanitizedData = {
+      isTopFrame: message.isTopFrame === true,
+      privacyPolicyLink: (message.privacyPolicyLink && isValidUrl(message.privacyPolicyLink)) ? message.privacyPolicyLink : null,
+      lang: sanitizeString(message.lang, 10),
+      policyInFooter: message.policyInFooter === true,
+      preCheckedCheckboxes: (message.preCheckedCheckboxes === true || message.preCheckedCheckboxes === 'no_checkboxes' || message.preCheckedCheckboxes === 'no_forms') ? message.preCheckedCheckboxes : 'no_forms',
+      hasFormPolicyLink: (message.hasFormPolicyLink === true || message.hasFormPolicyLink === 'no_forms') ? message.hasFormPolicyLink : 'no_forms',
+      cmpRejectStatus: ['detected', 'missing', 'unequal', 'no_cmp'].includes(message.cmpRejectStatus) ? message.cmpRejectStatus : 'no_cmp',
+      cmpPolicyLinkDetected: (message.cmpPolicyLinkDetected === true || message.cmpPolicyLinkDetected === 'no_cmp') ? message.cmpPolicyLinkDetected : 'no_cmp',
+      dataMinimizationStatus: ['passed', 'failed', 'warning', 'no_forms'].includes(message.dataMinimizationStatus) ? message.dataMinimizationStatus : 'no_forms',
+      policyDeepScan: message.policyDeepScan && typeof message.policyDeepScan === 'object' ? {
+        hasDpo: message.policyDeepScan.hasDpo === true,
+        hasTransparency: message.policyDeepScan.hasTransparency === true,
+        hasRights: message.policyDeepScan.hasRights === true,
+        isPlainLanguage: message.policyDeepScan.isPlainLanguage === true
+      } : null
+    };
+
+    handleDomScrape(tabId, sanitizedData, tabUrl || '');
   } else if (message.type === 'LEARNED_SIGNATURE') {
     const { signature } = message;
     if (signature && signature.domain && signature.key && typeof signature.key === 'string' && signature.key.trim().length >= 2) {
-      const storageKey = `learned_signatures_${signature.domain}`;
+      const sanitizedSig = {
+        domain: sanitizeString(signature.domain, 256),
+        key: sanitizeString(signature.key, 256),
+        storageType: sanitizeString(signature.storageType, 50),
+        action: sanitizeString(signature.action, 50),
+        valPattern: sanitizeString(signature.valPattern, 1024)
+      };
+
+      const storageKey = `learned_signatures_${sanitizedSig.domain}`;
       chrome.storage.local.get(storageKey, (res) => {
         let signatures = res[storageKey] || [];
-        // Prevent duplicate signatures for the same key and storage type
-        signatures = signatures.filter(s => !(s.key === signature.key && s.storageType === signature.storageType));
-        signatures.push(signature);
-        
-        // Quota check: limit to max 5 signatures per domain (FIFO eviction)
-        if (signatures.length > 5) {
-          signatures = signatures.slice(signatures.length - 5);
+        if (!signatures.some(sig => sig.key === sanitizedSig.key && sig.storageType === sanitizedSig.storageType)) {
+          signatures.push(sanitizedSig);
+          if (signatures.length > 5) {
+            signatures = signatures.slice(signatures.length - 5);
+          }
+          
+          chrome.storage.local.set({ [storageKey]: signatures }, () => {
+            console.log(`[GDPR Audit] Storage signature learned and persisted (capped at 5) for ${sanitizedSig.domain}:`, sanitizedSig);
+          });
         }
-        
-        chrome.storage.local.set({ [storageKey]: signatures }, () => {
-          console.log(`[GDPR Audit] Storage signature learned and persisted (capped at 5) for ${signature.domain}:`, signature);
-        });
       });
     }
   } else if (message.type === 'SCAN_POLICY_URL') {
     const tabId = sender.tab && sender.tab.id;
-    if (tabId && message.url) {
-      runBackgroundPolicyScan(tabId, message.url);
+    const url = sanitizeString(message.url, 2048);
+    if (tabId && isValidUrl(url)) {
+      runBackgroundPolicyScan(tabId, url);
     }
   }
 });

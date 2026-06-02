@@ -518,14 +518,17 @@ function querySelectorAllDeep(selector, root) {
   const results = [];
   try {
     results.push(...Array.from(root.querySelectorAll(selector)));
-    // If the root itself has a shadowRoot, look inside it
     if (root.shadowRoot) {
       results.push(...querySelectorAllDeep(selector, root.shadowRoot));
     }
-    // Walk all shadow roots of descendants
     const allElements = root.querySelectorAll('*');
     for (let el of allElements) {
-      if (el.shadowRoot) {
+      const tagName = el.tagName.toUpperCase();
+      // Only inspect tags that are specification-allowed to host shadow DOM
+      const canHostShadow = tagName.includes('-') || [
+        'DIV', 'SPAN', 'ARTICLE', 'ASIDE', 'BODY', 'SECTION', 'MAIN', 'FOOTER', 'HEADER', 'NAV'
+      ].includes(tagName);
+      if (canHostShadow && el.shadowRoot) {
         results.push(...querySelectorAllDeep(selector, el.shadowRoot));
       }
     }
@@ -615,7 +618,8 @@ function scanCmpBanner() {
     let maxScore = -1;
 
     try {
-      const allElements = querySelectorAllDeep('*', document);
+      // Optimization: Heuristic fallback banners are loaded in light DOM, so we can avoid scanning nested shadow DOMs recursively
+      const allElements = document.querySelectorAll('*');
       
       for (let el of allElements) {
         if (!el || el === document.body || el === document.documentElement) {

@@ -3,7 +3,8 @@
   "version": "1.0.5",
   "description": "Chrome extension to audit GDPR/CCPA cookie consent compliance on websites.",
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "test": "jest"
   },
   "keywords": [
     "chrome-extension",
@@ -13,5 +14,9 @@
     "auditor"
   ],
   "author": "Privacy Tools Dev",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1"
+  }
 }
