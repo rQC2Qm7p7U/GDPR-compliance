@@ -115,6 +115,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             id: 'erasure_mechanism',
             title: 'Swift Erasure Workflow',
             desc: 'An automated or manual rapid workflow is ready to delete user data across all tables on request (Art. 17).'
+          },
+          {
+            id: 'proof_of_consent',
+            title: 'Proof of Consent Log',
+            desc: 'Site maintains cryptographic logs (hashed IP, timestamp, consent version) to prove user opt-in (Art. 7(1)).'
+          },
+          {
+            id: 'third_party_vendors',
+            title: 'Third-Party Agreements',
+            desc: 'Ensures data processors (CRM, marketing tools) have signed GDPR-compliant Data Processing Agreements (Art. 28).'
           }
         ]
       }
@@ -190,6 +200,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             id: 'erasure_mechanism',
             title: 'Propagation of Erasure',
             desc: 'Workflow is established to propagate deletion requests downstream to service providers.'
+          },
+          {
+            id: 'proof_of_consent',
+            title: 'Opt-Out Request Logging',
+            desc: 'Maintains records of consumer opt-out requests and responses for at least 24 months (CCPA § 999.317).'
+          },
+          {
+            id: 'third_party_vendors',
+            title: 'Service Provider Contracts',
+            desc: 'Ensures contracts with third parties prohibit selling, sharing, or retaining personal info (CPRA § 1798.140).'
           }
         ]
       }
@@ -266,6 +286,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             id: 'erasure_mechanism',
             title: 'Brisanje iz zbirke na zahtjev',
             desc: 'Uspostavljen proces u bazi podataka za uklanjanje lica iz zbirke i prestanak obrade (čl. 24a).'
+          },
+          {
+            id: 'proof_of_consent',
+            title: 'Evidencija saglasnosti',
+            desc: 'Tehnički se vodi dnevnik i istorija prihvatanja uslova i kolačića radi dokazivanja saglasnosti.'
+          },
+          {
+            id: 'third_party_vendors',
+            title: 'Ugovori sa obrađivačima',
+            desc: 'Obezbijeđeni potpisani ugovori o povjerljivosti i obradi podataka sa trećim stranama u skladu sa ZZPL.'
           }
         ]
       }
