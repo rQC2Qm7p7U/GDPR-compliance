@@ -273,13 +273,17 @@ function scanPrivacyPolicy() {
     'политика конфиденциальности', 'политика cookies'
   ];
 
-  const links = document.getElementsByTagName('a');
+  // We scan both anchors (a) and interactive link elements (button, role="link") to support SPAs like mobile.de
+  const links = document.querySelectorAll('a, button, [role="link"]');
   for (let link of links) {
     const text = link.textContent ? link.textContent.toLowerCase().trim() : '';
-    const href = link.getAttribute('href');
-    if (!href) continue;
+    let href = link.getAttribute('href') || link.getAttribute('data-href') || link.getAttribute('data-url') || '';
     const matchesKeyword = keywords.some(keyword => text.includes(keyword));
     if (matchesKeyword) {
+      if (!href) {
+        // Return a dynamic link placeholder using text content
+        return 'javascript:void(0)/*' + encodeURIComponent(text) + '*/';
+      }
       try {
         return new URL(href, window.location.href).href;
       } catch (e) {
@@ -293,10 +297,22 @@ function scanPrivacyPolicy() {
 // ─── Check if policy link is inside footer or bottom 20% ─────────────────
 function checkPolicyInFooter(policyLink) {
   if (!policyLink) return false;
-  const links = document.getElementsByTagName('a');
+  const links = document.querySelectorAll('a, button, [role="link"]');
   for (let link of links) {
-    const href = link.getAttribute('href');
+    const href = link.getAttribute('href') || '';
+    const text = (link.textContent || '').toLowerCase().trim();
+    
+    let isMatch = false;
     if (href && (href.includes(policyLink) || policyLink.includes(href))) {
+      isMatch = true;
+    } else if (policyLink.includes('/*') && policyLink.includes('*/')) {
+      const decodedText = decodeURIComponent(policyLink.split('/*')[1].split('*/')[0]);
+      if (text.includes(decodedText) || decodedText.includes(text)) {
+        isMatch = true;
+      }
+    }
+
+    if (isMatch) {
       let parent = link.parentElement;
       while (parent) {
         if (parent.tagName.toLowerCase() === 'footer') return true;
@@ -387,29 +403,40 @@ function checkFormPolicyLink(policyLink) {
   const forms = Array.from(allForms).filter(isDataCollectionForm);
   if (forms.length === 0) return 'no_forms';
   for (let form of forms) {
-    const links = form.querySelectorAll('a');
+    const links = form.querySelectorAll('a, button, [role="link"]');
     for (let link of links) {
-      const href = link.getAttribute('href');
-      const text = link.textContent || '';
+      const href = link.getAttribute('href') || link.getAttribute('data-href') || link.getAttribute('data-url') || '';
+      const text = (link.textContent || '').toLowerCase().trim();
+      
+      let isMatch = false;
       if (href) {
-        // 1. Direct match with globally detected policy link
         if (policyLink && (href.includes(policyLink) || policyLink.includes(href))) {
-          return true;
+          isMatch = true;
         }
-        
-        // 2. Keyword-based match inside the form
-        const hrefLower = href.toLowerCase();
-        const textLower = text.toLowerCase().trim();
-        const privacyKeywords = [
-          'privacy', 'datenschutz', 'confidentialite', 'privacidad', 'regulamin',
-          'imprint', 'impressum', 'cookie', 'legal', 'datenschutzerklärung',
-          'terms', 'conditions', 'zastita', 'kolačići', 'polise', 'politika',
-          'richtlinie', 'declaration'
-        ];
-        
-        if (privacyKeywords.some(kw => hrefLower.includes(kw) || textLower.includes(kw))) {
-          return true;
+      }
+      if (!isMatch && policyLink && policyLink.includes('/*') && policyLink.includes('*/')) {
+        const decodedText = decodeURIComponent(policyLink.split('/*')[1].split('*/')[0]);
+        if (text.includes(decodedText) || decodedText.includes(text)) {
+          isMatch = true;
         }
+      }
+      
+      if (isMatch) {
+        return true;
+      }
+      
+      // Keyword-based match inside the form
+      const hrefLower = href.toLowerCase();
+      const textLower = text.toLowerCase().trim();
+      const privacyKeywords = [
+        'privacy', 'datenschutz', 'confidentialite', 'privacidad', 'regulamin',
+        'imprint', 'impressum', 'cookie', 'legal', 'datenschutzerklärung',
+        'terms', 'conditions', 'zastita', 'kolačići', 'polise', 'politika',
+        'richtlinie', 'declaration'
+      ];
+      
+      if (privacyKeywords.some(kw => hrefLower.includes(kw) || textLower.includes(kw))) {
+        return true;
       }
     }
   }

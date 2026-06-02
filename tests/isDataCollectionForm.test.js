@@ -86,3 +86,78 @@ describe('isDataCollectionForm test suite', () => {
     expect(isDataCollectionForm(suspiciousSearch)).toBe(true);
   });
 });
+
+describe('checkFormPolicyLink test suite', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  test('should return no_forms if there are no forms', () => {
+    expect(checkFormPolicyLink('https://example.com/privacy')).toBe('no_forms');
+  });
+
+  test('should return true if form has an <a> link with privacy keyword', () => {
+    const form = document.createElement('form');
+    form.innerHTML = `
+      <h3>Subscribe</h3>
+      <input type="email" name="email" />
+      <a href="https://example.com/privacy-policy">Privacy Rules</a>
+      <button type="submit">Submit</button>
+    `;
+    document.body.appendChild(form);
+    expect(checkFormPolicyLink('https://example.com/privacy-policy')).toBe(true);
+  });
+
+  test('should return true if form has a button role=link matching placeholder comment', () => {
+    const form = document.createElement('form');
+    form.innerHTML = `
+      <h3>Subscribe</h3>
+      <input type="email" name="email" />
+      <button role="link" type="button">Datenschutz</button>
+      <button type="submit">Submit</button>
+    `;
+    document.body.appendChild(form);
+    const placeholder = 'javascript:void(0)/*' + encodeURIComponent('datenschutz') + '*/';
+    expect(checkFormPolicyLink(placeholder)).toBe(true);
+  });
+});
+
+describe('checkPolicyInFooter test suite', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  test('should return true if privacy link is inside a footer element', () => {
+    const footer = document.createElement('footer');
+    footer.innerHTML = `
+      <button role="link" type="button">Datenschutz</button>
+    `;
+    document.body.appendChild(footer);
+    const placeholder = 'javascript:void(0)/*' + encodeURIComponent('datenschutz') + '*/';
+    expect(checkPolicyInFooter(placeholder)).toBe(true);
+  });
+
+  test('should return true if privacy link is at the bottom 20% of the document', () => {
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <button role="link" type="button">Datenschutz</button>
+    `;
+    document.body.appendChild(div);
+
+    // Mock getBoundingClientRect and document height
+    const btn = div.querySelector('button');
+    btn.getBoundingClientRect = () => ({
+      top: 900,
+      bottom: 920,
+      left: 0,
+      right: 100,
+      width: 100,
+      height: 20,
+    });
+    
+    Object.defineProperty(document.documentElement, 'scrollHeight', { value: 1000, writable: true, configurable: true });
+    
+    const placeholder = 'javascript:void(0)/*' + encodeURIComponent('datenschutz') + '*/';
+    expect(checkPolicyInFooter(placeholder)).toBe(true);
+  });
+});
