@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const checkPolicyFooterEl = document.getElementById('check-policy-footer');
   const checkCookieBlockEl = document.getElementById('check-cookie-block');
   const checkCookieRejectEl = document.getElementById('check-cookie-reject');
+  const checkCookiePolicyLinkEl = document.getElementById('check-cookie-policy-link');
   const checkFormPrecheckedEl = document.getElementById('check-form-prechecked');
   const checkFormLinkEl = document.getElementById('check-form-link');
   const checkFormMinimizationEl = document.getElementById('check-form-minimization');
@@ -287,7 +288,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           setSummaryState('neutral', 'System Tab', 'Extension auditing is not active on system pages.');
           
           detectionInfoEl.textContent = 'Audits not available on system pages.';
-          [checkPolicyExistsEl, checkPolicyFooterEl, checkCookieBlockEl, checkCookieRejectEl, checkFormPrecheckedEl, checkFormLinkEl, checkSecurityHttpsEl, checkFormMinimizationEl].forEach(el => {
+          [checkPolicyExistsEl, checkPolicyFooterEl, checkCookieBlockEl, checkCookieRejectEl, checkCookiePolicyLinkEl, checkFormPrecheckedEl, checkFormLinkEl, checkSecurityHttpsEl, checkFormMinimizationEl].forEach(el => {
             el.textContent = '⏳';
             el.className = 'chk-status status-loading';
           });
@@ -326,7 +327,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       hasFormPolicyLink: false, 
       cmpRejectStatus: 'no_cmp',
       policyDeepScan: null,
-      dataMinimizationStatus: 'passed'
+      dataMinimizationStatus: 'passed',
+      cmpPolicyLinkDetected: 'no_cmp'
     };
 
     updateUI();
@@ -719,6 +721,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       rejectDescParagraph.textContent = 'Warning: No standard cookie banner detected in DOM.';
     }
 
+    // Cookie Banner Policy Link Check
+    const cookiePolicyLinkDescEl = checkCookiePolicyLinkEl.nextElementSibling.querySelector('.chk-desc');
+    const cookiePolicyLinkStatus = tabState.cmpPolicyLinkDetected;
+    if (cookiePolicyLinkStatus === 'no_cmp') {
+      checkCookiePolicyLinkEl.textContent = '—';
+      checkCookiePolicyLinkEl.className = 'chk-status status-loading';
+      cookiePolicyLinkDescEl.textContent = 'N/A: No cookie consent banner detected.';
+    } else if (cookiePolicyLinkStatus === true) {
+      checkCookiePolicyLinkEl.textContent = '✓';
+      checkCookiePolicyLinkEl.className = 'chk-status status-success';
+      cookiePolicyLinkDescEl.textContent = 'Passed: Consent banner contains links to the privacy policy or imprint.';
+    } else {
+      checkCookiePolicyLinkEl.textContent = '✗';
+      checkCookiePolicyLinkEl.className = 'chk-status status-fail';
+      cookiePolicyLinkDescEl.textContent = 'Failed: Consent banner does not contain links to the privacy rules (impressum/datenschutz).';
+    }
+
     // 8c. Section 3: Forms & Data Collection
     // Active Opt-In Check (no precheck)
     const precheckedDescParagraph = checkFormPrecheckedEl.nextElementSibling.querySelector('.chk-desc');
@@ -1062,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       grade = "F";
       gradeClass = "grade-f";
       gradeDesc = "Non-Compliant (Critical Failures)";
-    } else if (technicalAudits.cmpRejectButtonStatus === 'missing' || technicalAudits.cmpRejectButtonStatus === 'unequal' || !technicalAudits.privacyPolicyLink || technicalAudits.dataMinimizationStatus === 'failed') {
+    } else if (technicalAudits.cmpRejectButtonStatus === 'missing' || technicalAudits.cmpRejectButtonStatus === 'unequal' || !technicalAudits.privacyPolicyLink || technicalAudits.dataMinimizationStatus === 'failed' || technicalAudits.cmpPolicyLinkStatus === false) {
       grade = "C";
       gradeClass = "grade-c";
       gradeDesc = "Incomplete Compliance (Warnings)";
@@ -1129,8 +1148,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       { name: "Policy Position in Footer", val: technicalAudits.policyInFooter, desc: "Checks if the policy link is in the footer or bottom scroll area." },
       { name: "Pre-Consent Tracker Block", val: technicalAudits.preConsentBlocked, desc: "Verifies cookies/trackers are blocked before user consent action." },
       { name: "First-layer 'Reject All' Button", val: technicalAudits.cmpRejectButtonStatus === 'detected', desc: "Verifies a Reject/Decline button is directly visible on the banner layer.", warn: technicalAudits.cmpRejectButtonStatus === 'unequal' },
+      { name: "Privacy Policy Link in Banner", val: technicalAudits.cmpPolicyLinkStatus === true || technicalAudits.cmpPolicyLinkStatus === 'no_cmp', desc: "Verifies the cookie banner displays links to privacy/imprint documents.", warn: technicalAudits.cmpPolicyLinkStatus === false },
       { name: "Blank Checkbox Inputs (Opt-in)", val: technicalAudits.preCheckedCheckboxesStatus !== true, desc: "Verifies forms contain no pre-checked consent checkboxes." },
-      { name: "Privacy Policy Link in Forms", val: technicalAudits.formPolicyLinkStatus === true, desc: "Checks if submission forms contain a policy link next to submit buttons." },
+      { name: "Privacy Policy Link in Forms", val: technicalAudits.formPolicyLinkStatus === true || technicalAudits.formPolicyLinkStatus === 'no_forms', desc: "Checks if submission forms contain a policy link next to submit buttons." },
       { name: "Form Data Minimization", val: technicalAudits.dataMinimizationStatus === 'passed' || technicalAudits.dataMinimizationStatus === 'no_forms', desc: "Verifies subscription/input forms do not request excessive mandatory fields (like phone number).", warn: technicalAudits.dataMinimizationStatus === 'warning' }
     ];
 
@@ -1303,6 +1323,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 &lt;input type="tel" name="phone"&gt;</code></pre>
             </li>
             <li><strong>Purpose Justification</strong>: If these fields are strictly necessary, document the specific legal basis and commercial purpose in your Privacy Policy.</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    if (technicalAudits.cmpPolicyLinkStatus === false) {
+      remediationBlocks += `
+        <div class="remediation-card warning">
+          <h4>6. Add Privacy Links to Cookie Banner</h4>
+          <p>The cookie consent banner does not contain links to the Privacy Policy (Datenschutz) or Imprint (Impressum). This violates transparency principles under Article 13 of GDPR.</p>
+          <h5>Remediation Instructions for Developers:</h5>
+          <ul>
+            <li>Configure your CMP (e.g. Usercentrics, OneTrust, Didomi) to enable footer links in the banner layout.</li>
+            <li>Add clear, accessible anchor links to <code>Privacy Policy</code> and <code>Imprint</code> on the first layer of the banner template.</li>
           </ul>
         </div>
       `;
@@ -2185,6 +2219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         cmpRejectButtonStatus: tabState.cmpRejectStatus,
         preCheckedCheckboxesStatus: tabState.preCheckedCheckboxes,
         formPolicyLinkStatus: tabState.hasFormPolicyLink,
+        cmpPolicyLinkStatus: tabState.cmpPolicyLinkDetected,
         dataMinimizationStatus: tabState.dataMinimizationStatus
       },
       manualChecklist: {

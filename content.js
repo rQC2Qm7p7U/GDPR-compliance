@@ -312,9 +312,47 @@ function checkPolicyInFooter(policyLink) {
   return false;
 }
 
+// ─── Detect data collection forms (filter out simple searches) ───────────
+function isDataCollectionForm(form) {
+  const formText = (form.textContent || '').toLowerCase();
+  const action = (form.getAttribute('action') || '').toLowerCase();
+  const id = (form.getAttribute('id') || '').toLowerCase();
+  const className = (form.getAttribute('class') || '').toLowerCase();
+  
+  const isNewsletter = formText.includes('newsletter') || formText.includes('subscribe') || formText.includes('abonnieren') || formText.includes('подпис') || className.includes('newsletter') || id.includes('newsletter') || className.includes('subscribe') || id.includes('subscribe') || action.includes('subscribe');
+  const isContact = formText.includes('contact') || formText.includes('kontakt') || formText.includes('get in touch') || formText.includes('anfrage') || className.includes('contact') || id.includes('contact') || formText.includes('feedback');
+  const isRegistration = formText.includes('register') || formText.includes('sign up') || formText.includes('registrieren') || className.includes('register') || id.includes('register') || className.includes('signup') || id.includes('signup') || formText.includes('create account') || formText.includes('anmelden');
+  const isLogin = formText.includes('login') || formText.includes('sign in') || className.includes('login') || id.includes('login') || formText.includes('einloggen');
+  const isCheckout = formText.includes('checkout') || formText.includes('billing') || formText.includes('payment') || className.includes('checkout') || id.includes('checkout') || formText.includes('kasse');
+
+  if (isNewsletter || isContact || isRegistration || isLogin || isCheckout) return true;
+
+  const inputs = form.querySelectorAll('input, select, textarea');
+  let hasPersonalInput = false;
+  inputs.forEach(input => {
+    const type = (input.getAttribute('type') || '').toLowerCase();
+    const name = (input.getAttribute('name') || '').toLowerCase();
+    const idAttr = (input.getAttribute('id') || '').toLowerCase();
+    const placeholder = (input.getAttribute('placeholder') || '').toLowerCase();
+    
+    const isEmail = type === 'email' || name.includes('email') || idAttr.includes('email') || placeholder.includes('email');
+    const isPhone = type === 'tel' || name.includes('phone') || name.includes('tel') || idAttr.includes('phone');
+    const isAddress = name.includes('address') || name.includes('street') || name.includes('zip') || name.includes('city') || idAttr.includes('address');
+    const isPassword = type === 'password' || name.includes('pass') || idAttr.includes('pass');
+    const isCheckbox = type === 'checkbox';
+
+    if (isEmail || isPhone || isAddress || isPassword || isCheckbox) {
+      hasPersonalInput = true;
+    }
+  });
+
+  return hasPersonalInput;
+}
+
 // ─── Pre-checked checkbox detection ──────────────────────────────────────
 function checkFormCheckboxes() {
-  const forms = document.getElementsByTagName('form');
+  const allForms = document.getElementsByTagName('form');
+  const forms = Array.from(allForms).filter(isDataCollectionForm);
   if (forms.length === 0) return 'no_forms';
   let hasCheckboxes = false;
   for (let form of forms) {
@@ -329,7 +367,8 @@ function checkFormCheckboxes() {
 
 // ─── Form policy link check ───────────────────────────────────────────────
 function checkFormPolicyLink(policyLink) {
-  const forms = document.getElementsByTagName('form');
+  const allForms = document.getElementsByTagName('form');
+  const forms = Array.from(allForms).filter(isDataCollectionForm);
   if (forms.length === 0) return 'no_forms';
   for (let form of forms) {
     const links = form.querySelectorAll('a');
@@ -714,6 +753,12 @@ function scanCmpBanner() {
     }
   }
 
+  if (banner) {
+    lastCmpBannerElement = banner;
+  } else {
+    lastCmpBannerElement = null;
+  }
+
   if (!banner) return 'no_cmp';
 
   // ─── Find clickable elements (including Shadow DOM) ─────────────────────
@@ -795,6 +840,33 @@ function scanCmpBanner() {
   return resultStatus;
 }
 
+// ─── Check for privacy policy / imprint links inside CMP banner ──────────
+function checkCmpPolicyLink() {
+  if (!lastCmpBannerElement) return 'no_cmp';
+  
+  const links = querySelectorAllDeep('a', lastCmpBannerElement);
+  if (links.length === 0) return false;
+  
+  const privacyKeywords = [
+    'privacy', 'datenschutz', 'confidentialite', 'privacidad', 'regulamin',
+    'imprint', 'impressum', 'cookie', 'legal', 'datenschutzerklärung',
+    'terms', 'conditions', 'zastita', 'kolačići', 'polise', 'politika',
+    'richtlinie', 'declaration'
+  ];
+  
+  for (let link of links) {
+    const href = link.getAttribute('href');
+    const text = (link.textContent || '').toLowerCase().trim();
+    if (href) {
+      const hrefLower = href.toLowerCase();
+      if (privacyKeywords.some(kw => hrefLower.includes(kw) || text.includes(kw))) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 // ─── Deep privacy policy text analysis ───────────────────────────────────
 function scanPrivacyPolicyText(text) {
   const lowercaseText = text.toLowerCase();
@@ -862,6 +934,7 @@ function scanPrivacyPolicyText(text) {
 // ─── State ────────────────────────────────────────────────────────────────
 let currentPolicyScan = null;
 let lastCmpRejectStatus = 'no_cmp';
+let lastCmpBannerElement = null;
 
 // ─── Main DOM data sender ─────────────────────────────────────────────────
 function sendDOMData() {
@@ -872,6 +945,7 @@ function sendDOMData() {
   const hasFormPolicyLink = checkFormPolicyLink(privacyPolicyLink);
   const cmpRejectStatus = scanCmpBanner();
   lastCmpRejectStatus = cmpRejectStatus;
+  const cmpPolicyLinkDetected = checkCmpPolicyLink();
 
   const currentUrl = window.location.href.toLowerCase();
   const isCurrentlyPolicyPage =
@@ -899,6 +973,7 @@ function sendDOMData() {
     preCheckedCheckboxes,
     hasFormPolicyLink,
     cmpRejectStatus,
+    cmpPolicyLinkDetected,
     policyDeepScan: currentPolicyScan,
     dataMinimizationStatus: checkDataMinimization(),
     isTopFrame: window === window.top
