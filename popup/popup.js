@@ -1174,8 +1174,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         statusIcon = `<svg class="status-svg danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
       }
       
+      const automatedKeys = {
+        "HTTPS Security Protocol": "https-security-protocol",
+        "Privacy Policy Link Detected": "privacy-policy-link-detected",
+        "Policy Position in Footer": "policy-position-in-footer",
+        "Pre-Consent Tracker Block": "pre-consent-tracker-block",
+        "First-layer 'Reject All' Button": "first-layer-reject-all-button",
+        "Privacy Policy Link in Banner": "privacy-policy-link-in-banner",
+        "Blank Checkbox Inputs (Opt-in)": "blank-checkbox-inputs-opt-in",
+        "Privacy Policy Link in Forms": "privacy-policy-link-in-forms",
+        "Form Data Minimization": "form-data-minimization"
+      };
+      const key = automatedKeys[c.name] || c.name.toLowerCase().replace(/\s+/g, '-');
+
       checksCards += `
-        <div class="checklist-card ${statusClass}">
+        <div class="checklist-card ${statusClass}" style="cursor: pointer;" onclick="showHint('${key}')">
           <div class="card-status-icon">${statusIcon}</div>
           <div class="card-info">
             <div class="card-header-row">
@@ -1222,7 +1235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (!found) return;
 
           manualCards += `
-            <div class="checklist-card ${statusClass}">
+            <div class="checklist-card ${statusClass}" style="cursor: pointer;" onclick="showHint('${k}')">
               <div class="card-status-icon">${statusIcon}</div>
               <div class="card-info">
                 <div class="card-header-row">
@@ -2045,6 +2058,124 @@ document.addEventListener('DOMContentLoaded', async () => {
         page-break-after: auto;
       }
     }
+
+    /* Interactive Popover Modal */
+    .hint-modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .hint-modal.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .hint-modal-content {
+      background: #ffffff;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 550px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--color-border);
+      padding: 30px;
+      position: relative;
+      transform: translateY(20px);
+      transition: transform 0.25s ease;
+    }
+
+    .hint-modal.active .hint-modal-content {
+      transform: translateY(0);
+    }
+
+    .hint-modal-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: none;
+      border: none;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--color-text-light);
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .hint-modal-close:hover {
+      color: var(--color-text-dark);
+    }
+
+    .hint-modal-header {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .hint-modal-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--color-text-dark);
+      margin-bottom: 6px;
+    }
+
+    .hint-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      background: #e0e7ff;
+      color: var(--color-accent);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .hint-modal-body p {
+      font-size: 14.5px;
+      line-height: 1.6;
+      color: var(--color-text);
+      margin-bottom: 20px;
+    }
+
+    .hint-legal-block, .hint-remediation-block {
+      background: var(--color-gray-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      text-align: left;
+    }
+
+    .hint-legal-block h5, .hint-remediation-block h5 {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--color-text-dark);
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .hint-legal-block code {
+      font-family: SFMono-Regular, Consolas, monospace;
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--color-accent);
+    }
+    
+    .checklist-card:hover {
+      border-color: var(--color-accent-light) !important;
+    }
   </style>
 </head>
 <body>
@@ -2117,14 +2248,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       </div>
       <div class="meta-item">
         <span class="meta-label">Overall Grade</span>
-        <span class="meta-value"><span class="grade-badge ${gradeClass}">${gradeDesc} (${grade})</span></span>
+        <span class="meta-value"><span class="grade-badge ${gradeClass}" style="cursor: pointer;" onclick="showHint('grade')">${gradeDesc} (${grade})</span></span>
       </div>
     </div>
 
     <div class="report-body">
       
       <!-- Summary Block -->
-      <div class="status-summary-block block-${grade.toLowerCase()}">
+      <div class="status-summary-block block-${grade.toLowerCase()}" style="cursor: pointer;" onclick="showHint('grade')">
         <div class="grade-big-circle">${grade}</div>
         <div class="status-text">
           <h4>Status: ${gradeDesc}</h4>
@@ -2184,6 +2315,181 @@ document.addEventListener('DOMContentLoaded', async () => {
     </div>
 
   </div>
+
+  <!-- Interactive Popover Modal (no-print) -->
+  <div id="hint-modal" class="hint-modal no-print">
+    <div class="hint-modal-content">
+      <button class="hint-modal-close" id="close-modal">&times;</button>
+      <div class="hint-modal-header">
+        <h3 id="hint-modal-title">Requirement</h3>
+        <span class="hint-badge" id="hint-modal-badge">Basis</span>
+      </div>
+      <div class="hint-modal-body">
+        <p id="hint-modal-desc">Detailed explanation...</p>
+        <div class="hint-legal-block">
+          <h5>Regulatory Legal Basis:</h5>
+          <code id="hint-modal-legal">GDPR Article</code>
+        </div>
+        <div class="hint-remediation-block">
+          <h5>Actionable Remediation Steps:</h5>
+          <p id="hint-modal-action">Remediation steps...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const HINT_DATA = {
+      'grade': {
+        title: 'How Compliance Grades Are Calculated',
+        basis: 'Audit Rating Heuristics',
+        desc: 'The grade represents the overall privacy compliance risk score of the website:',
+        action: '• Grade A: 0 network/cookie violations, all automated tests passed, equal Choice button weights.\\n• Grade B: 0 network/cookie violations, minor layout warnings (e.g. policy link exists but not in the standard footer, data minimization warnings).\\n• Grade C: 0 network/cookie violations, but severe layout/UI dark patterns (e.g. unequal reject buttons, missing banner policy links).\\n• Grade F: Network or cookie violations detected (trackers initialized pre-consent or post-rejection).'
+      },
+      'https-security-protocol': {
+        title: 'HTTPS Security Protocol',
+        basis: 'GDPR Article 32 (Security of Processing)',
+        desc: 'Verifies the website uses an encrypted SSL/TLS connection (https://). Security is the cornerstone of privacy.',
+        action: 'Ensure a valid, active SSL certificate is installed on your web server and that all http:// traffic is permanently redirected to https://.'
+      },
+      'privacy-policy-link-detected': {
+        title: 'Privacy Policy Link Detected',
+        basis: 'GDPR Articles 12 & 13, CCPA § 1798.100',
+        desc: 'Verifies the presence of a visible hyperlink leading to the privacy disclosures page.',
+        action: 'Link a valid privacy policy document matching local regulatory requirements (e.g. detailing DPO contact, user rights, data retention policies).'
+      },
+      'policy-position-in-footer': {
+        title: 'Policy Position in Footer',
+        basis: 'GDPR Transparency principles / CalOPPA',
+        desc: 'Checks if the privacy link is placed in the global website footer. The policy must be accessible in a single click from any page.',
+        action: 'Place clear, recognizable anchor links to "Privacy Policy" or "Datenschutz" inside the HTML global <footer> tag.'
+      },
+      'pre-consent-tracker-block': {
+        title: 'Pre-Consent Tracker Block',
+        basis: 'ePrivacy Directive Article 5(3), GDPR Article 7',
+        desc: 'Checks if non-essential tracking cookies or scripts (e.g., marketing pixels, analytics) fire before user consent.',
+        action: 'Configure your Tag Manager (GTM) or consent management provider (CMP) to hold script triggers until active consent is granted (Consent Mode).'
+      },
+      'first-layer-reject-all-button': {
+        title: "First-layer 'Reject All' Button",
+        basis: 'EDPB Guidelines 05/2020 on Consent',
+        desc: 'Checks if the cookie banner features a direct "Reject All" button on the first visible screen layer.',
+        action: 'Do not hide the reject button behind settings or submenus. It must be as accessible and prominent as the "Accept All" button.'
+      },
+      'privacy-policy-link-in-banner': {
+        title: 'Privacy Policy Link in Banner',
+        basis: 'GDPR Article 13 & transparency rules',
+        desc: 'Verifies the cookie consent banner template includes links to the site\'s Privacy Policy and Imprint disclosures.',
+        action: 'Edit your CMP layout settings to enable direct link anchors to privacy and legal notice pages in the banner text.'
+      },
+      'blank-checkbox-inputs-opt-in': {
+        title: 'Blank Checkbox Inputs (Opt-in)',
+        basis: 'GDPR Recital 32 & CJEU Case C-673/17',
+        desc: 'Verifies that newsletter subscription, contact, or checkout forms do not contain pre-checked consent checkboxes.',
+        action: 'Remove the "checked" attribute from all marketing or policy agreement checkbox inputs. Consent must be a positive opt-in action.'
+      },
+      'privacy-policy-link-in-forms': {
+        title: 'Privacy Policy Link in Forms',
+        basis: 'GDPR Article 6 (Lawfulness of processing)',
+        desc: 'Checks if forms collecting personal data include a clear privacy policy link next to the submission triggers.',
+        action: 'Add a small disclaimer label with an active link next to submission buttons, e.g., "By signing up, you agree to our [Privacy Policy](URL)".'
+      },
+      'form-data-minimization': {
+        title: 'Form Data Minimization',
+        basis: 'GDPR Article 5(1)(c) (Data Minimization)',
+        desc: 'Checks if submission forms request excessive mandatory data fields that are unnecessary for the service (e.g. phone number for marketing updates).',
+        action: 'Audit your form designs. Change mandatory requirements to optional (remove the HTML "required" tag) for non-essential fields.'
+      },
+      'plain_language': {
+        title: 'Plain Language Disclosures / Right Notice',
+        basis: 'GDPR Article 12(1) / CCPA notice',
+        desc: 'Ensures the privacy policy document is written in clear, concise, plain, and easy-to-understand language.',
+        action: 'Rewrite complex legalese sentences. Use headings, bullet points, and tables to make the document highly readable for average users.'
+      },
+      'dpo_contacts': {
+        title: 'DPO & Operator Contact Information',
+        basis: 'GDPR Article 13(1)(a) & (b) / CCPA',
+        desc: 'Verifies the contact details of the website operator and the Data Protection Officer (if applicable) are explicitly stated.',
+        action: 'Add email, physical address, and contact forms for the data controller and DPO under the "Contact Information" section.'
+      },
+      'data_transparency': {
+        title: 'Detailed Processing Transparency / Notice',
+        basis: 'GDPR Article 13 & 14 / CCPA Notice at Collection',
+        desc: 'Checks if the policy details the categories of data collected, commercial purposes, storage duration, and data processors.',
+        action: 'Insert a detailed data processing table mapping: What we collect -> Why -> Legal basis -> Storage duration -> Shared with.'
+      },
+      'user_rights': {
+        title: 'User Privacy Rights Disclosures',
+        basis: 'GDPR Articles 15-21 / CCPA Rights to Delete & Correct',
+        desc: 'Checks if users are explicitly informed of their rights to access, rectify, delete, restrict, port, and object to processing.',
+        action: 'Add a dedicated section detailing how users can exercise their rights, including a submission channel or contact link.'
+      },
+      'equal_buttons': {
+        title: 'Equal Choices Button styling / Opt-out Banner',
+        basis: 'EDPB Dark Patterns Guideline 03/2022',
+        desc: 'Verifies the "Accept All" and "Reject All" buttons on the cookie banner share identical background weights, color contrast, and padding.',
+        action: 'Ensure your banner design has balanced button weights. Avoid styling "Reject" as a grey text link while "Accept" is a bright colored button.'
+      },
+      'granular_preferences': {
+        title: 'Granular Preference Choices / GPC Support',
+        basis: 'GDPR Article 7(2) Consent / CCPA GPC',
+        desc: 'Ensures users can consent to specific tracker categories independently or opt-out via global signals.',
+        action: 'Configure your CMP to display separate category checkboxes inside preference settings, keeping them unticked by default, or support reading automated GPC browser headers.'
+      },
+      'persistent_settings_btn': {
+        title: 'Persistent Settings Withdrawal / No Discrimination',
+        basis: 'GDPR Article 7(3) (Right to withdraw) / CCPA',
+        desc: 'Verifies a persistent settings button remains visible, or guarantees users are not discriminated against for exercising privacy rights.',
+        action: 'Enable the CMP "reopen settings" floating widget or place a persistent "Cookie Settings" link in the footer.'
+      },
+      'separate_consent': {
+        title: 'No Bundled Marketing Opt-In / Right to Limit',
+        basis: 'GDPR Article 7(4) (Conditionality) / CCPA',
+        desc: 'Verifies that completing a transaction or submitting a form does not force or automatically bundle marketing subscriptions.',
+        action: 'Ensure newsletter checkboxes are not pre-checked, and that agreeing to website Terms of Service is separate from marketing subscription.'
+      }
+    };
+
+    function showHint(key) {
+      const data = HINT_DATA[key];
+      if (!data) return;
+      
+      document.getElementById('hint-modal-title').textContent = data.title;
+      document.getElementById('hint-modal-badge').textContent = data.basis;
+      document.getElementById('hint-modal-desc').textContent = data.desc;
+      
+      const actionEl = document.getElementById('hint-modal-action');
+      actionEl.innerHTML = data.action.replace(/\\n/g, '<br>');
+      
+      const legalBlock = document.querySelector('.hint-legal-block');
+      if (data.basis.includes('Article') || data.basis.includes('CCPA') || data.basis.includes('ePrivacy') || data.basis.includes('EDPB')) {
+        legalBlock.style.display = 'block';
+        document.getElementById('hint-modal-legal').textContent = data.basis;
+      } else {
+        legalBlock.style.display = 'none';
+      }
+      
+      const modal = document.getElementById('hint-modal');
+      modal.classList.add('active');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const modal = document.getElementById('hint-modal');
+      const closeBtn = document.getElementById('close-modal');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          modal.classList.remove('active');
+        });
+      }
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            modal.classList.remove('active');
+          }
+        });
+      }
+    });
+  </script>
 
 </body>
 </html>`;
