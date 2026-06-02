@@ -645,14 +645,18 @@ async function handleDomScrape(tabId, scrapeData, tabUrl) {
       state.cmpRejectStatus = scrapeData.cmpRejectStatus;
     }
     if (scrapeData.cmpPolicyLinkDetected !== undefined) {
-      state.cmpPolicyLinkDetected = scrapeData.cmpPolicyLinkDetected;
+      if (scrapeData.cmpPolicyLinkDetected === true || state.cmpPolicyLinkDetected === 'no_cmp') {
+        state.cmpPolicyLinkDetected = scrapeData.cmpPolicyLinkDetected;
+      }
     }
   } else {
     if (scrapeData.cmpRejectStatus !== 'no_cmp') {
       state.cmpRejectStatus = scrapeData.cmpRejectStatus;
     }
-    if (scrapeData.cmpPolicyLinkDetected !== undefined && scrapeData.cmpPolicyLinkDetected !== 'no_cmp') {
-      state.cmpPolicyLinkDetected = scrapeData.cmpPolicyLinkDetected;
+    if (scrapeData.cmpPolicyLinkDetected !== undefined) {
+      if (scrapeData.cmpPolicyLinkDetected === true || state.cmpPolicyLinkDetected === 'no_cmp') {
+        state.cmpPolicyLinkDetected = scrapeData.cmpPolicyLinkDetected;
+      }
     }
   }
 
