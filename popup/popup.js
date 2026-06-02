@@ -313,6 +313,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab) {
         activeDomainEl.textContent = 'No active tab';
+        btnExport.setAttribute('disabled', 'true');
         return;
       }
       activeTab = tab;
@@ -337,6 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             el.textContent = '⏳';
             el.className = 'chk-status status-loading';
           });
+          btnExport.setAttribute('disabled', 'true');
           return;
         }
         activeDomainEl.textContent = tabDomain;
@@ -516,6 +518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 7. Render dynamic compliance metrics and tables
   function updateUI() {
     if (!tabState) return;
+    btnExport.removeAttribute('disabled');
 
     const status = tabState.consentStatus;
     const jurisdiction = tabState.jurisdiction || 'GDPR';
@@ -554,7 +557,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     violationsListEl.innerHTML = '';
     if (violations.length > 0) {
       violationsListEl.classList.remove('empty');
-      btnExport.removeAttribute('disabled');
 
       const sortedViolations = [...violations].sort((a, b) => b.timestamp - a.timestamp);
 
@@ -628,7 +630,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     } else {
       violationsListEl.classList.add('empty');
-      btnExport.setAttribute('disabled', 'true');
       
       violationsListEl.innerHTML = `
         <div class="empty-state">
@@ -1051,7 +1052,725 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // 11. Export JSON Compliance Report
+  // Helper to generate a fully standalone printable HTML compliance report
+  function generateHtmlReport(exportData) {
+    const {
+      auditTimestamp,
+      domain,
+      selectedAuditMode,
+      resolvedJurisdiction,
+      consentStatus,
+      cmpStandard,
+      technicalAudits,
+      manualChecklist,
+      policyDeepScan,
+      violationsCount,
+      violations
+    } = exportData;
+
+    const dateStr = new Date(auditTimestamp).toLocaleString();
+    
+    // Calculate compliance grade:
+    // Grade A: 0 violations, all automated tests pass, no dark patterns
+    // Grade B: 0 violations, minor warnings (e.g. policy link exists but not in footer)
+    // Grade C: violations present but minor, or dark pattern present
+    // Grade F: violations present (trackers loaded pre-consent or post-rejection)
+    let grade = "A";
+    let gradeClass = "grade-a";
+    let gradeDesc = "Fully Compliant";
+
+    const preConsentViolations = violations.filter(v => v.type === 'PRE_CONSENT' || v.type.endsWith('_BYPASS')).length;
+    const postRejectionViolations = violations.filter(v => v.type === 'POST_REJECTION').length;
+
+    if (preConsentViolations > 0 || postRejectionViolations > 0) {
+      grade = "F";
+      gradeClass = "grade-f";
+      gradeDesc = "Non-Compliant (Critical Failures)";
+    } else if (technicalAudits.cmpRejectButtonStatus === 'missing' || technicalAudits.cmpRejectButtonStatus === 'unequal' || !technicalAudits.privacyPolicyLink) {
+      grade = "C";
+      gradeClass = "grade-c";
+      gradeDesc = "Incomplete Compliance (Warnings)";
+    } else if (!technicalAudits.policyInFooter || technicalAudits.preCheckedCheckboxesStatus === true) {
+      grade = "B";
+      gradeClass = "grade-b";
+      gradeDesc = "Mostly Compliant (Minor Adjustments Required)";
+    }
+
+    // Render violations list as rows
+    let violationsRows = "";
+    if (violations && violations.length > 0) {
+      violations.forEach((v, idx) => {
+        let badgeLabel = 'Pre-Consent';
+        let badgeClass = 'badge-danger';
+        if (v.type === 'POST_REJECTION') {
+          badgeLabel = 'Post-Rejection';
+        } else if (v.type.endsWith('_BYPASS')) {
+          badgeLabel = `${resolvedJurisdiction} Bypass`;
+        }
+
+        violationsRows += `
+          <tr>
+            <td>${idx + 1}</td>
+            <td><span class="tracker-tag">${escapeHtml(v.trackerName)}</span></td>
+            <td><span class="violation-badge ${badgeClass}">${badgeLabel}</span></td>
+            <td class="url-cell" title="${escapeHtml(v.url)}">${escapeHtml(v.url)}</td>
+            <td>${escapeHtml(v.initiator)}</td>
+            <td>${new Date(v.timestamp).toLocaleTimeString()}</td>
+          </tr>
+        `;
+      });
+    } else {
+      violationsRows = `
+        <tr>
+          <td colspan="6" class="text-center text-muted" style="padding: 30px; font-style: italic;">
+            ✓ No network/cookie compliance violations detected during the audit session.
+          </td>
+        </tr>
+      `;
+    }
+
+    // Generate automated checklist rows
+    const checks = [
+      { name: "HTTPS Security Protocol", val: technicalAudits.isHttpsSecure, desc: "Verifies the website uses SSL/TLS encryption." },
+      { name: "Privacy Policy Link Detected", val: !!technicalAudits.privacyPolicyLink, desc: `Checks for a visible privacy policy link matching ${resolvedJurisdiction} keywords.` },
+      { name: "Policy Position in Footer", val: technicalAudits.policyInFooter, desc: "Checks if the policy link is in the footer or bottom scroll area." },
+      { name: "Pre-Consent Tracker Block", val: technicalAudits.preConsentBlocked, desc: "Verifies cookies/trackers are blocked before user consent action." },
+      { name: "First-layer 'Reject All' Button", val: technicalAudits.cmpRejectButtonStatus === 'detected', desc: "Verifies a Reject/Decline button is directly visible on the banner layer.", warn: technicalAudits.cmpRejectButtonStatus === 'unequal' },
+      { name: "Blank Checkbox Inputs (Opt-in)", val: technicalAudits.preCheckedCheckboxesStatus !== true, desc: "Verifies forms contain no pre-checked consent checkboxes." },
+      { name: "Privacy Policy Link in Forms", val: technicalAudits.formPolicyLinkStatus === true, desc: "Checks if submission forms contain a policy link next to submit buttons." }
+    ];
+
+    let checksRows = "";
+    checks.forEach(c => {
+      let statusBadge = "";
+      if (c.val === true || (c.name.includes("Checkbox") && c.val)) {
+        statusBadge = '<span class="status-indicator pass">PASS</span>';
+      } else if (c.warn) {
+        statusBadge = '<span class="status-indicator warn">WARNING</span>';
+      } else {
+        statusBadge = '<span class="status-indicator fail">FAIL</span>';
+      }
+      checksRows += `
+        <tr>
+          <td><strong>${c.name}</strong><br><small class="text-muted">${c.desc}</small></td>
+          <td class="text-center">${statusBadge}</td>
+        </tr>
+      `;
+    });
+
+    // Manual reviews rows
+    let manualRows = "";
+    if (manualChecklist && manualChecklist.selections) {
+      const keys = Object.keys(manualChecklist.selections);
+      if (keys.length > 0) {
+        keys.forEach(k => {
+          const checked = manualChecklist.selections[k];
+          const statusBadge = checked 
+            ? '<span class="status-indicator pass">COMPLIANT</span>' 
+            : '<span class="status-indicator fail">UNVERIFIED</span>';
+          
+          let title = k.replace(/_/g, ' ');
+          title = title.charAt(0).toUpperCase() + title.slice(1);
+          let desc = "";
+
+          const jData = CHECKLIST_DATA[resolvedJurisdiction];
+          if (jData && jData.manual_items) {
+            for (const grp of Object.values(jData.manual_items)) {
+              const match = grp.find(item => item.id === k);
+              if (match) {
+                title = match.title;
+                desc = match.desc;
+                break;
+              }
+            }
+          }
+
+          manualRows += `
+            <tr>
+              <td><strong>${title}</strong><br><small class="text-muted">${desc}</small></td>
+              <td class="text-center">${statusBadge}</td>
+            </tr>
+          `;
+        });
+      }
+    }
+
+    // Developer Remediation Guidelines Block
+    let remediationBlocks = "";
+    if (preConsentViolations > 0 || postRejectionViolations > 0) {
+      remediationBlocks += `
+        <div class="remediation-card danger">
+          <h4>1. Fix Illegal Tracker Initialization (Immediate Action Required)</h4>
+          <p>The auditor detected tracking scripts or cookies initializing before consent was given (Pre-Consent) or after the user declined consent (Post-Rejection). This directly violates Article 7 of GDPR / Section 1798.120 of CCPA.</p>
+          <h5>Remediation Instructions for Developers:</h5>
+          <ul>
+            <li><strong>GTM Consent Mode</strong>: Enable Tag Manager "Consent Settings". Do not fire Google Analytics, Facebook Pixel, or TikTok tags until <code>analytics_storage</code> or <code>ad_storage</code> is granted.</li>
+            <li><strong>Script Tag Wrapping</strong>: Modify direct script tags on the page to prevent automatic load:
+              <pre><code>&lt;!-- Change this: --&gt;
+&lt;script src="https://example-tracker.com/pixel.js"&gt;&lt;/script&gt;
+
+&lt;!-- To this (CMP wrapper style): --&gt;
+&lt;script type="text/plain" class="_cm_script" data-consent="marketing" src="https://example-tracker.com/pixel.js"&gt;&lt;/script&gt;</code></pre>
+            </li>
+            <li><strong>Server-side Cookies</strong>: Ensure server-side set-cookie headers (like <code>IDE</code>, <code>_fbp</code>, <code>_ga</code>) are not sent on initial load before the user makes a choice.</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    if (technicalAudits.cmpRejectButtonStatus === 'missing' || technicalAudits.cmpRejectButtonStatus === 'unequal') {
+      const isMissing = technicalAudits.cmpRejectButtonStatus === 'missing';
+      remediationBlocks += `
+        <div class="remediation-card warning">
+          <h4>2. Adjust Cookie Banner Design &amp; Options</h4>
+          <p>The cookie banner ${isMissing ? 'is missing a direct "Reject All" button on the first screen layer' : 'contains a "Reject All" button that is visually styled unequally compared to the Accept button (Dark Pattern)'}. Regulatory agencies (like AZLP and EU DPAs) penalize unequal visual design weight.</p>
+          <h5>Remediation Instructions for Developers/Designers:</h5>
+          <ul>
+            <li><strong>Button Prominence</strong>: Ensure the "Reject All" button is placed next to the "Accept All" button, using the same background contrast, font size, padding, and border weights. Do not hide reject actions inside a "Settings" link.</li>
+            <li><strong>GPC Sync</strong>: Enable support for Global Privacy Control (GPC) header signals to automatically process opt-outs without displaying the banner.</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    if (technicalAudits.preCheckedCheckboxesStatus === true) {
+      remediationBlocks += `
+        <div class="remediation-card danger">
+          <h4>3. Fix Pre-checked Consent Checkboxes</h4>
+          <p>The auditor detected forms on the site containing pre-ticked checkboxes for marketing, newsletter, or data sharing consent. Under GDPR, consent must be an "unambiguous indication of the data subject's wishes by a clear affirmative action". Pre-checked boxes are illegal.</p>
+          <h5>Remediation Instructions for Developers:</h5>
+          <ul>
+            <li><strong>HTML Checkboxes</strong>: Ensure all checkbox inputs have the <code>checked</code> attribute removed from their HTML:
+              <pre><code>&lt;!-- Incorrect: --&gt;
+&lt;input type="checkbox" name="marketing" checked&gt;
+
+&lt;!-- Correct: --&gt;
+&lt;input type="checkbox" name="marketing"&gt;</code></pre>
+            </li>
+          </ul>
+        </div>
+      `;
+    }
+
+    if (!technicalAudits.privacyPolicyLink || !technicalAudits.policyInFooter) {
+      remediationBlocks += `
+        <div class="remediation-card warning">
+          <h4>4. Correct Privacy Policy Placement</h4>
+          <p>The Privacy Policy link is either not detected, or is not located in the standard footer/bottom scroll area of the page.</p>
+          <h5>Remediation Instructions for Webmasters:</h5>
+          <ul>
+            <li>Place a clear link labeled "Privacy Policy" or "Datenschutz" inside the global site <code>&lt;footer&gt;</code> tag on every single page.</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    if (grade === "A") {
+      remediationBlocks = `
+        <div class="remediation-card success">
+          <h4>No Actions Required!</h4>
+          <p>Excellent! The website passed all automated checks. All tracking scripts and cookies were successfully blocked prior to user consent. The cookie consent banner provides equal visual choices for the user, and data collection forms comply with opt-in guidelines.</p>
+        </div>
+      `;
+    }
+
+    // Build the complete HTML string
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compliance Audit Report: ${escapeHtml(domain)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-primary: #0f172a;
+      --color-primary-light: #1e293b;
+      --color-accent: #38bdf8;
+      --color-success: #10b981;
+      --color-success-bg: #ecfdf5;
+      --color-danger: #ef4444;
+      --color-danger-bg: #fef2f2;
+      --color-warning: #f59e0b;
+      --color-warning-bg: #fffbeb;
+      --color-gray-bg: #f8fafc;
+      --color-border: #e2e8f0;
+      --color-text: #334155;
+      --color-text-dark: #0f172a;
+      --color-text-light: #64748b;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--color-text);
+      background-color: #f1f5f9;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .report-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05);
+      border: 1px solid var(--color-border);
+      overflow: hidden;
+    }
+
+    header.report-header {
+      background: var(--color-primary);
+      color: #ffffff;
+      padding: 40px;
+      border-bottom: 4px solid var(--color-accent);
+      position: relative;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .header-logo svg {
+      width: 32px;
+      height: 32px;
+      color: var(--color-accent);
+    }
+
+    .header-logo span {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .header-logo span span {
+      color: var(--color-accent);
+    }
+
+    .report-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 5px;
+      letter-spacing: -0.5px;
+    }
+
+    .report-subtitle {
+      font-size: 14px;
+      color: var(--color-text-light);
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      padding: 30px 40px;
+      background: var(--color-gray-bg);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .meta-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-text-light);
+      margin-bottom: 4px;
+    }
+
+    .meta-value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--color-text-dark);
+    }
+
+    .grade-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .grade-a { background-color: var(--color-success-bg); color: var(--color-success); border: 1px solid #a7f3d0; }
+    .grade-b { background-color: var(--color-success-bg); color: var(--color-success); border: 1px solid #a7f3d0; }
+    .grade-c { background-color: var(--color-warning-bg); color: var(--color-warning); border: 1px solid #fde68a; }
+    .grade-f { background-color: var(--color-danger-bg); color: var(--color-danger); border: 1px solid #fca5a5; }
+
+    .report-body {
+      padding: 40px;
+    }
+
+    section.report-section {
+      margin-bottom: 40px;
+    }
+
+    section.report-section h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-text-dark);
+      margin-bottom: 20px;
+      border-left: 4px solid var(--color-accent);
+      padding-left: 12px;
+      letter-spacing: -0.3px;
+    }
+
+    /* Overall Grade Block */
+    .status-summary-block {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+      padding: 30px;
+      border-radius: 8px;
+      margin-bottom: 35px;
+    }
+
+    .status-summary-block.block-a, .status-summary-block.block-b {
+      background-color: var(--color-success-bg);
+      border: 1px solid #a7f3d0;
+    }
+
+    .status-summary-block.block-c {
+      background-color: var(--color-warning-bg);
+      border: 1px solid #fde68a;
+    }
+
+    .status-summary-block.block-f {
+      background-color: var(--color-danger-bg);
+      border: 1px solid #fca5a5;
+    }
+
+    .grade-big-circle {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      font-weight: 800;
+      flex-shrink: 0;
+      border: 4px solid #ffffff;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+
+    .block-a .grade-big-circle, .block-b .grade-big-circle { background-color: var(--color-success); color: #ffffff; }
+    .block-c .grade-big-circle { background-color: var(--color-warning); color: #ffffff; }
+    .block-f .grade-big-circle { background-color: var(--color-danger); color: #ffffff; }
+
+    .status-text h4 {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      color: var(--color-text-dark);
+    }
+
+    .status-text p {
+      font-size: 14px;
+      color: var(--color-text);
+    }
+
+    /* Tables */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    table.data-table th {
+      background-color: var(--color-gray-bg);
+      color: var(--color-text-dark);
+      font-weight: 700;
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 2px solid var(--color-border);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    table.data-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+      vertical-align: middle;
+    }
+
+    table.data-table tr:hover {
+      background-color: #f8fafc80;
+    }
+
+    .url-cell {
+      word-break: break-all;
+      max-width: 300px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #0f172a;
+    }
+
+    .tracker-tag {
+      font-weight: 600;
+      color: var(--color-text-dark);
+      background-color: var(--color-gray-bg);
+      border: 1px solid var(--color-border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: inline-block;
+    }
+
+    .violation-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-danger { background-color: var(--color-danger-bg); color: var(--color-danger); border: 1px solid #fecaca; }
+
+    .status-indicator {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      min-width: 70px;
+    }
+
+    .status-indicator.pass { background-color: var(--color-success-bg); color: var(--color-success); border: 1px solid #a7f3d0; }
+    .status-indicator.warn { background-color: var(--color-warning-bg); color: var(--color-warning); border: 1px solid #fde68a; }
+    .status-indicator.fail { background-color: var(--color-danger-bg); color: var(--color-danger); border: 1px solid #fca5a5; }
+
+    /* Remediation Section */
+    .remediation-card {
+      padding: 24px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 5px solid;
+    }
+
+    .remediation-card.danger {
+      background-color: var(--color-danger-bg);
+      border-color: var(--color-danger);
+      color: #7f1d1d;
+    }
+
+    .remediation-card.danger h4 { color: #991b1b; margin-bottom: 8px; }
+
+    .remediation-card.warning {
+      background-color: var(--color-warning-bg);
+      border-color: var(--color-warning);
+      color: #78350f;
+    }
+
+    .remediation-card.warning h4 { color: #92400e; margin-bottom: 8px; }
+
+    .remediation-card.success {
+      background-color: var(--color-success-bg);
+      border-color: var(--color-success);
+      color: #064e3b;
+    }
+
+    .remediation-card.success h4 { color: #065f46; margin-bottom: 8px; }
+
+    .remediation-card p {
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+
+    .remediation-card h5 {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .remediation-card ul {
+      margin-left: 20px;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+
+    .remediation-card li {
+      margin-bottom: 6px;
+    }
+
+    .remediation-card pre {
+      background-color: rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      padding: 12px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      margin-top: 6px;
+      color: #0f172a;
+    }
+
+    /* Print styles */
+    @media print {
+      body {
+        background-color: #ffffff;
+        padding: 0;
+      }
+      .report-container {
+        box-shadow: none;
+        border: none;
+      }
+      .remediation-card {
+        page-break-inside: avoid;
+      }
+      table {
+        page-break-inside: auto;
+      }
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="report-container">
+    
+    <header class="report-header">
+      <div class="header-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22C12 22 20 18 20 12V5L12 2L4 5V12C4 12 4 18 12 22Z"/>
+        </svg>
+        <span>Privacy<span>Auditor</span></span>
+      </div>
+      <h1 class="report-title">Privacy Compliance Audit Report</h1>
+      <div class="report-subtitle">Generated by privacy compliance browser evaluation engine</div>
+    </header>
+
+    <div class="meta-grid">
+      <div class="meta-item">
+        <span class="meta-label">Audit Domain</span>
+        <span class="meta-value">${escapeHtml(domain)}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Evaluation Date</span>
+        <span class="meta-value">${dateStr}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Simulated Profile</span>
+        <span class="meta-value">${escapeHtml(selectedAuditMode.toUpperCase())}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Jurisdiction standard</span>
+        <span class="meta-value">${escapeHtml(resolvedJurisdiction)}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Overall Grade</span>
+        <span class="meta-value"><span class="grade-badge ${gradeClass}">${gradeDesc} (${grade})</span></span>
+      </div>
+    </div>
+
+    <div class="report-body">
+      
+      <!-- Summary Block -->
+      <div class="status-summary-block block-${grade.toLowerCase()}">
+        <div class="grade-big-circle">${grade}</div>
+        <div class="status-text">
+          <h4>Status: ${gradeDesc}</h4>
+          <p>
+            ${grade === 'A' ? 'The audited website meets critical criteria. All third-party trackers are blocked by default, forms utilize active opt-in, and the cookie consent banner allows a direct reject path.' :
+              grade === 'B' ? 'The website conforms to core standards but contains minor issues such as policy positioning or form details. Ensure minor fixes are addressed.' :
+              grade === 'C' ? 'Minor compliance issues detected. Banners or links must be adjusted to align with privacy regulation criteria.' :
+              'Critical violations detected. The website initiates tracking calls before user consent or after user refusal. Action items must be resolved immediately by development teams.'}
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Items Section -->
+      <section class="report-section">
+        <h3>IT &amp; Developer Remediation Guidelines</h3>
+        ${remediationBlocks}
+      </section>
+
+      <!-- Violations List -->
+      <section class="report-section">
+        <h3>Audited Tracker Violations Log (${violationsCount})</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 5%">#</th>
+              <th style="width: 25%">Tracker System</th>
+              <th style="width: 15%">Violation Context</th>
+              <th style="width: 30%">Request Target</th>
+              <th style="width: 15%">Originator</th>
+              <th style="width: 10%">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${violationsRows}
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Automated Audit Checklist -->
+      <section class="report-section">
+        <h3>Automated Scanner Checklist</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 80%">Evaluated Requirement</th>
+              <th style="width: 20%; text-align: center;">Scan Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${checksRows}
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Manual Checklist Status -->
+      <section class="report-section">
+        <h3>Manual Checklist Review</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 80%">Requirement Description</th>
+              <th style="width: 20%; text-align: center;">Review State</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${manualRows || '<tr><td colspan="2" class="text-center text-muted">No manual checklist verification items recorded.</td></tr>'}
+          </tbody>
+        </table>
+      </section>
+
+    </div>
+
+  </div>
+
+</body>
+</html>`;
+  }
+
+  // 11. Export HTML Compliance Report
   btnExport.addEventListener('click', async () => {
     if (!tabState) return;
     
@@ -1095,10 +1814,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       violations: tabState.violations
     };
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+    const reportHtml = generateHtmlReport(exportData);
+    const dataStr = "data:text/html;charset=utf-8," + encodeURIComponent(reportHtml);
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `privacy_report_${jurisdiction.toLowerCase()}_${tabDomain.replace(/\./g, '_')}.json`);
+    downloadAnchor.setAttribute("download", `privacy_report_${jurisdiction.toLowerCase()}_${tabDomain.replace(/\./g, '_')}.html`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
