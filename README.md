@@ -6,16 +6,6 @@ The extension checks if tracking scripts, analytics, and marketing tags load bef
 
 ---
 
-## 🎨 Icon Design
-
-The extension features a clean, minimalist flat icon concept:
-
-<p align="center">
-  <img src="icons/icon128.png" alt="GDPR Consent Auditor Logo" width="128" height="128">
-</p>
-
----
-
 ## ✨ Features
 
 - **Universal CMP Banner Detection**: Uses an optimized, two-phase weighted scoring heuristic to detect consent overlays (OneTrust, Cookiebot, Usercentrics, Didomi, Sourcepoint, etc.) across any website.
