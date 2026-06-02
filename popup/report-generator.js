@@ -221,19 +221,20 @@ function generateHtmlReport(exportData) {
   if (preConsentViolations > 0 || postRejectionViolations > 0) {
     remediationBlocks += `
       <div class="remediation-card danger">
-        <h4>1. Fix Illegal Tracker Initialization (Immediate Action Required)</h4>
+        <h4>1. Fix Illegal Tracker &amp; Cookie Initialization (Immediate Action Required)</h4>
         <p>The auditor detected tracking scripts or cookies initializing before consent was given (Pre-Consent) or after the user declined consent (Post-Rejection). This directly violates Article 7 of GDPR / Section 1798.120 of CCPA.</p>
         <h5>Remediation Instructions for Developers:</h5>
         <ul>
-          <li><strong>GTM Consent Mode</strong>: Enable Tag Manager "Consent Settings". Do not fire Google Analytics, Facebook Pixel, or TikTok tags until <code>analytics_storage</code> or <code>ad_storage</code> is granted.</li>
-          <li><strong>Script Tag Wrapping</strong>: Modify direct script tags on the page to prevent automatic load:
+          <li><strong>GTM Consent Mode (v2)</strong>: Enable Tag Manager "Consent Settings". Do not fire Google Analytics, Facebook Pixel, or TikTok tags until <code>analytics_storage</code> and <code>ad_storage</code> are granted. For EEA users, ensure <code>ad_user_data</code> and <code>ad_personalization</code> flags are also configured.</li>
+          <li><strong>Script Tag Wrapping (Client-Side HTML)</strong>: Prevent automatic loading of direct script tags by changing their type to <code>text/plain</code> and adding your CMP's specific activation attributes:
             <pre><code><span class="comment">&lt;!-- Change this: --&gt;</span>
 &lt;<span class="tag">script</span> <span class="attr">src</span>=<span class="val">"https://example-tracker.com/pixel.js"</span>&gt;&lt;/<span class="tag">script</span>&gt;
 
-<span class="comment">&lt;!-- To this (CMP wrapper style): --&gt;</span>
-&lt;<span class="tag">script</span> <span class="attr">type</span>=<span class="val">"text/plain"</span> <span class="attr">class</span>=<span class="val">"_cm_script"</span> <span class="attr">data-consent</span>=<span class="val">"marketing"</span> <span class="attr">src</span>=<span class="val">"https://example-tracker.com/pixel.js"</span>&gt;&lt;/<span class="tag">script</span>&gt;</code></pre>
+<span class="comment">&lt;!-- To this (Example for dynamic CMP activation): --&gt;</span>
+&lt;<span class="tag">script</span> <span class="attr">type</span>=<span class="val">"text/plain"</span> <span class="attr">class</span>=<span class="val">"opt-in-tracker"</span> <span class="attr">data-consent-category</span>=<span class="val">"marketing"</span> <span class="attr">src</span>=<span class="val">"https://example-tracker.com/pixel.js"</span>&gt;&lt;/<span class="tag">script</span>&gt;</code></pre>
+            <span class="note" style="font-size: 11px; color: var(--color-text-light); font-style: italic; display: block; margin-top: 5px;">*Note: The exact class and data attribute depend on your specific CMP provider (e.g., Cookiebot uses <code>data-cookieconsent</code>, OneTrust uses specific class categories).</span>
           </li>
-          <li><strong>Server-side Cookies</strong>: Ensure server-side set-cookie headers (like <code>IDE</code>, <code>_fbp</code>, <code>_ga</code>) are not sent on initial load before the user makes a choice.</li>
+          <li><strong>Server-side Cookies (HTTP Headers)</strong>: Inspect your server configuration, CDN rules, or Edge Workers to ensure that server-side <code>Set-Cookie</code> headers for analytics and advertising (e.g., <code>IDE</code>, <code>_fbp</code>, <code>_ga</code>) are not dispatched during the initial load page request before consent is confirmed.</li>
         </ul>
       </div>
     `;
