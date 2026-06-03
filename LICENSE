@@ -22,17 +22,17 @@ SOFTWARE.
 
 ---
 
-### Third-Party Data Attributions & Credits
+Third-Party Data Attributions & Credits
 
 This extension dynamically fetches and processes external datasets at runtime under their respective licenses:
 
-1. **Consent-O-Matic Rules**
-   * **Source**: Aarhus University, CAVI (https://github.com/cavi-au/Consent-O-Matic)
-   * **License**: MIT License
-   * **Copyright Notice**:
+1. Consent-O-Matic Rules
+   * Source: Aarhus University, CAVI (https://github.com/cavi-au/Consent-O-Matic)
+   * License: MIT License
+   * Copyright Notice:
      Copyright (c) 2019-2022 Janus Bager Kristensen and Rolf Bagge, CAVI - Center for Advanced Visualization and Interaction, Aarhus University
 
-2. **DuckDuckGo Tracker Blocklist**
-   * **Source**: DuckDuckGo, Inc. (https://github.com/duckduckgo/tracker-blocklists)
-   * **License**: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
-   * **Commercial Limitation Notice**: Please note that the DuckDuckGo dataset is restricted to non-commercial use. If you intend to utilize this software for commercial purposes, you must ensure compliance with the CC BY-NC-SA 4.0 license or configure a custom non-restricted tracker database.
+2. DuckDuckGo Tracker Blocklist**
+   * Source: DuckDuckGo, Inc. (https://github.com/duckduckgo/tracker-blocklists)
+   * License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
+   * Commercial Limitation Notice: Please note that the DuckDuckGo dataset is restricted to non-commercial use. If you intend to utilize this software for commercial purposes, you must ensure compliance with the CC BY-NC-SA 4.0 license or configure a custom non-restricted tracker database.
