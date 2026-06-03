@@ -74,7 +74,14 @@ Once loaded:
 
 ---
 
-## 📄 License
+## 📄 License & Attributions
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-All external rules datasets are owned and governed by their respective licenses (e.g., DuckDuckGo tracker blocklist is licensed under CC-BY-NC 4.0).
+This software codebase is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for the full text.
+
+### Third-Party Datasets & Licensing
+
+The extension dynamically pulls and caches external rule databases at runtime to identify trackers and cookie banners:
+
+* **Consent-O-Matic Rules**: Developed by [CAVI - Aarhus University](https://github.com/cavi-au/Consent-O-Matic) and licensed under the permissive **MIT License**.
+* **DuckDuckGo Tracker Blocklist**: Developed by [DuckDuckGo, Inc.](https://github.com/duckduckgo/tracker-blocklists) and licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**. 
+  * ⚠️ *Note for Commercial Users: The tracker rule feed is restricted to non-commercial use. If you intend to compile, distribute, or use this extension as part of a commercial product, you must ensure compliance with the CC BY-NC-SA 4.0 terms or configure an alternative tracking rules endpoint.*
