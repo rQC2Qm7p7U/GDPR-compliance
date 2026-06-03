@@ -32,7 +32,7 @@ This extension dynamically fetches and processes external datasets at runtime un
    * Copyright Notice:
      Copyright (c) 2019-2022 Janus Bager Kristensen and Rolf Bagge, CAVI - Center for Advanced Visualization and Interaction, Aarhus University
 
-2. DuckDuckGo Tracker Blocklist**
+2. DuckDuckGo Tracker Blocklist
    * Source: DuckDuckGo, Inc. (https://github.com/duckduckgo/tracker-blocklists)
    * License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
    * Commercial Limitation Notice: Please note that the DuckDuckGo dataset is restricted to non-commercial use. If you intend to utilize this software for commercial purposes, you must ensure compliance with the CC BY-NC-SA 4.0 license or configure a custom non-restricted tracker database.
